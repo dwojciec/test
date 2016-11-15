@@ -28,7 +28,7 @@ package io.swagger.client;
 @javax.annotation.Generated(value = "class io.swagger.codegen.languages.JavaClientCodegen", date = "2016-11-15T09:10:08.564Z")
 public class Configuration {
     private static ApiClient defaultApiClient = new ApiClient();
-
+    
     /**
      * Get the default API client, which would be used when creating API
      * instances without providing an API client.
@@ -36,6 +36,7 @@ public class Configuration {
      * @return Default API client
      */
     public static ApiClient getDefaultApiClient() {
+    	defaultApiClient.setApiKey("4d8dd-fe726@AHOI_TEST");
         return defaultApiClient;
     }
 
