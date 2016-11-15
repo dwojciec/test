@@ -17,6 +17,12 @@
 		<java.version>1.8</java.version>
 		<spring-boot.version>1.4.2.RELEASE</spring-boot.version>
 		<enunciate.version>2.5.0</enunciate.version>
+
+		<swagger-core-version>1.5.9</swagger-core-version>
+		<okhttp-version>2.7.5</okhttp-version>
+		<gson-version>2.6.2</gson-version>
+		<jodatime-version>2.9.3</jodatime-version>
+		<maven-plugin-version>1.0.0</maven-plugin-version>
 	</properties>
 
 	<dependencyManagement>
@@ -50,11 +56,36 @@
 			<scope>test</scope>
 		</dependency>
 		<!-- Provides annotations for extending the automatically generated HTTP 
-		API documentation -->
+			API documentation -->
 		<dependency>
 			<groupId>com.webcohesion.enunciate</groupId>
 			<artifactId>enunciate-core-annotations</artifactId>
 			<version>${enunciate.version}</version>
+		</dependency>
+
+		<!-- Swagger Client Deps -->
+		<dependency>
+			<groupId>io.swagger</groupId>
+			<artifactId>swagger-annotations</artifactId>
+			<version>${swagger-core-version}</version>
+		</dependency>
+		<dependency>
+			<groupId>com.squareup.okhttp</groupId>
+			<artifactId>okhttp</artifactId>
+			<version>${okhttp-version}</version>
+		</dependency>
+		<dependency>
+			<groupId>com.squareup.okhttp</groupId>
+			<artifactId>logging-interceptor</artifactId>
+			<version>${okhttp-version}</version>
+		</dependency>
+		<dependency>
+			<groupId>com.google.code.gson</groupId>
+			<artifactId>gson</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>joda-time</groupId>
+			<artifactId>joda-time</artifactId>
 		</dependency>
 	</dependencies>
 
@@ -69,6 +100,15 @@
 			</resource>
 		</resources>
 		<plugins>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<version>3.1</version>
+				<configuration>
+					<source>1.8</source>
+					<target>1.8</target>
+				</configuration>
+			</plugin>
 			<plugin> <!-- spring boot packaging for self contained runnable jar w/embedded tomcat -->
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
