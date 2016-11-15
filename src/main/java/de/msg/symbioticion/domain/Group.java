@@ -5,17 +5,14 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
 @IgnoreExtraProperties
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class User {
-  private String uid;
-  private String firstName;
-  private String lastName;
-  private String nickName;
-  private String iban;
-  private String bic;
+public class Group {
+  private String name;
+  private String description;
+  private List<User> users;
 }
-
-

@@ -5,17 +5,15 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
+
 @IgnoreExtraProperties
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class User {
-  private String uid;
-  private String firstName;
-  private String lastName;
-  private String nickName;
-  private String iban;
-  private String bic;
+public class Settlement {
+  private BigDecimal amount;
+  private User receiver;
+  private User sender;
+  private String description;
 }
-
-

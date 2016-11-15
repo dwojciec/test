@@ -5,17 +5,17 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.List;
+
 @IgnoreExtraProperties
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class User {
-  private String uid;
-  private String firstName;
-  private String lastName;
-  private String nickName;
-  private String iban;
-  private String bic;
+public class Expense {
+  private BigDecimal amount;
+  private LocalDateTime timeOfExpense;
+  private String description;
+  private String tag;
 }
-
-
