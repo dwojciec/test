@@ -1,17 +1,13 @@
 package de.msg.symbioticion.api;
 
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
-
-import javax.annotation.PostConstruct;
-
+import com.google.firebase.FirebaseApp;
+import com.google.firebase.FirebaseOptions;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+import de.msg.symbioticion.domain.Expense;
+import de.msg.symbioticion.domain.Settlement;
+import de.msg.symbioticion.domain.User;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ResourceLoaderAware;
 import org.springframework.core.io.ResourceLoader;
 import org.springframework.http.MediaType;
@@ -20,14 +16,11 @@ import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 
-import com.google.firebase.FirebaseApp;
-import com.google.firebase.FirebaseOptions;
-import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
-
-import de.msg.symbioticion.domain.Expense;
-import de.msg.symbioticion.domain.User;
-import lombok.extern.slf4j.Slf4j;
+import javax.annotation.PostConstruct;
+import java.io.IOException;
+import java.io.InputStream;
+import java.time.LocalDateTime;
+import java.util.*;
 
 /**
  * @author Rafael Kansy
@@ -35,8 +28,8 @@ import lombok.extern.slf4j.Slf4j;
 @Controller
 @RequestMapping(value = "/dummy")
 @Slf4j
-public class DummyController  implements ResourceLoaderAware {
-	private static final String DATABASE_URL = "https://symbioticon-fbf9e.firebaseio.com/";
+public class DummyController implements ResourceLoaderAware {
+    private static final String DATABASE_URL = "https://symbioticon-fbf9e.firebaseio.com/";
     private static DatabaseReference database;
 
     private ResourceLoader resourceLoader;
@@ -83,18 +76,24 @@ public class DummyController  implements ResourceLoaderAware {
         List<Expense> expenses = new ArrayList<>();
 
         for (int i = 0; i < users.size(); i++) {
-            String sender = usersKeys.get(getRandom(users.size()));
-            String recipient = usersKeys.get(getRandom(users.size()));
+            // TODO create Groups
+            String group = usersKeys.get(getRandom(users.size()));
+            String payer = usersKeys.get(getRandom(users.size()));
             String amount = Integer.toString(10 * i);
             String timeOfExpense = LocalDateTime.now().toString();
 
-            expenses.add(new Expense(sender, recipient, amount, timeOfExpense, "", ""));
+            expenses.add(new Expense(group, payer, amount, timeOfExpense, ""));
 
             for (Expense expense : expenses) {
                 DatabaseReference key = database.getRoot().child("/expenses/").push();
                 key.setValue(expense);
             }
         }
+
+        String sender = usersKeys.get(getRandom(users.size()));
+        String recipient = usersKeys.get(getRandom(users.size()));
+        Settlement settlement = new Settlement("777", recipient, sender, "Fachlich nicht korrektes Settlement");
+        database.getRoot().child("/settlement/").setValue(settlement);
 
         return ResponseEntity.ok("Dummy Data created");
     }
@@ -105,9 +104,9 @@ public class DummyController  implements ResourceLoaderAware {
     }
 
 
-	@Override
-	public void setResourceLoader(ResourceLoader resourceLoader) {
-		this.resourceLoader = resourceLoader;
-		
-	}
+    @Override
+    public void setResourceLoader(ResourceLoader resourceLoader) {
+        this.resourceLoader = resourceLoader;
+
+    }
 }

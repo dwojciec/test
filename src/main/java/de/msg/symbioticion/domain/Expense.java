@@ -13,10 +13,9 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @NoArgsConstructor
 public class Expense {
-    private String sender;
-    private String recipient;
+    private String group;
+    private String payer;
     private String amount;
     private String timeOfExpense;
     private String description;
-    private String tag;
 }

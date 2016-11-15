@@ -12,7 +12,7 @@ import java.math.BigDecimal;
 @AllArgsConstructor
 @NoArgsConstructor
 public class Settlement {
-    private BigDecimal amount;
+    private String amount;
     private String recipient;
     private String sender;
     private String description;
