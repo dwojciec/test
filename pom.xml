@@ -6,7 +6,7 @@
 	<groupId>de.msg</groupId>
 	<artifactId>split</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<packaging>war</packaging>
+	<packaging>jar</packaging>
 
 	<name>split</name>
 	<description>Share expenses in close-knit groups</description>
