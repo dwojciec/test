@@ -1,23 +1,33 @@
 package de.msg.symbioticion.api;
 
-import com.google.firebase.FirebaseApp;
-import com.google.firebase.FirebaseOptions;
-import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
-import de.msg.symbioticion.domain.Expense;
-import de.msg.symbioticion.domain.User;
-import lombok.extern.slf4j.Slf4j;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
+
+import javax.annotation.PostConstruct;
+
+import org.springframework.context.ResourceLoaderAware;
+import org.springframework.core.io.ResourceLoader;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.time.LocalDateTime;
-import java.util.*;
+import com.google.firebase.FirebaseApp;
+import com.google.firebase.FirebaseOptions;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+
+import de.msg.symbioticion.domain.Expense;
+import de.msg.symbioticion.domain.User;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * @author Rafael Kansy
@@ -25,13 +35,16 @@ import java.util.*;
 @Controller
 @RequestMapping(value = "/dummy")
 @Slf4j
-public class DummyController {
-    private static final String DATABASE_URL = "https://symbioticon-fbf9e.firebaseio.com/";
+public class DummyController  implements ResourceLoaderAware {
+	private static final String DATABASE_URL = "https://symbioticon-fbf9e.firebaseio.com/";
     private static DatabaseReference database;
 
-    public DummyController() {
+    private ResourceLoader resourceLoader;
+
+    @PostConstruct
+    public void postConstruct() {
         try (
-                InputStream stream = new FileInputStream("service-account.json");
+                InputStream stream = resourceLoader.getResource("classpath:service-account.json").getInputStream();
         ) {
             FirebaseOptions options = new FirebaseOptions.Builder()
                     .setServiceAccount(stream)
@@ -90,4 +103,11 @@ public class DummyController {
         Random r = new Random();
         return r.nextInt(max - 1);
     }
+
+
+	@Override
+	public void setResourceLoader(ResourceLoader resourceLoader) {
+		this.resourceLoader = resourceLoader;
+		
+	}
 }
