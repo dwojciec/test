@@ -15,6 +15,8 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * @author Rafael Kansy
@@ -50,15 +52,18 @@ public class DummyController {
     public ResponseEntity<String> createUsers() {
         database.getRoot().removeValue();
 
-        for (int i = 0; i < 2; i++) {
-            String firstName = i % 2 == 0 ? "rafael" : "wolfgang";
-            String lastName = i % 2 == 0 ? "rafael" : "wolfgang";
-            String email = i % 2 == 0 ? "rafael.kansy@msg-systems.com" : "wolfgang.werner@msg-systems.com";
-            User user = new User(firstName, lastName, "nickName", email, "DE527003250909", "BYLADEN1001");
+        List<User> users = new ArrayList<>();
+        users.add(new User("Hans-Peter", "Keilhofer", "nickName", "hans-peter.keilhofer@msg-gillardon.de", "DE527003250909", "BYLADEN1001"));
+        users.add(new User("Wolfgang", "Werner", "nickName", "wolfgang.werner@msg-systems.com", "DE527003250909", "BYLADEN1001"));
+        users.add(new User("Mateusz", "Parzonka", "nickName", "Mateusz.Parzonka@msg-systems.com", "DE527003250909", "BYLADEN1001"));
+        users.add(new User("Rafael", "Kansy", "nickName", "rafael.kansy@msg-systems.com", "DE527003250909", "BYLADEN1001"));
+        users.add(new User("Tobias", "Kronschnabl", "nickName", "Tobias.Kronschnabl@msg-gillardon.de", "DE527003250909", "BYLADEN1001"));
 
+        for (User user : users) {
             DatabaseReference key = database.getRoot().child("/users/").push();
             key.setValue(user);
         }
+
         return ResponseEntity.ok("Users created");
     }
 
