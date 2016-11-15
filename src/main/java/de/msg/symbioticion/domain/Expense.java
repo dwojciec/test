@@ -15,8 +15,8 @@ import java.time.LocalDateTime;
 public class Expense {
     private String sender;
     private String recipient;
-    private BigDecimal amount;
-    private LocalDateTime timeOfExpense;
+    private String amount;
+    private String timeOfExpense;
     private String description;
     private String tag;
 }
