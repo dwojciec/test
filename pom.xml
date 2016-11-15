@@ -100,12 +100,6 @@
 					<exclude>build/**</exclude>
 				</excludes>
 			</resource>
-			<resource>
-				<directory>.</directory>
-				<includes>
-					<include>service-account.json</include>
-				</includes>
-			</resource>
 		</resources>
 		<plugins>
 			<plugin>
