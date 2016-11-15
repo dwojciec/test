@@ -26,7 +26,7 @@ public class HelloWorldResource {
 	@RequestMapping(value = "/api/ahoi/providers", method = RequestMethod.GET, produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
 	public ResponseEntity<List<Provider>> providers() throws ApiException {
 
-		List<Provider> providers = new ProviderApi().getProviders("", true, "");
+		List<Provider> providers = new ProviderApi().getProviders(null, null, null);
 		return ResponseEntity.ok(providers);
 	}
 

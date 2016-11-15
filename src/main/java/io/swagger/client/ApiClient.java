@@ -126,8 +126,7 @@ public class ApiClient {
      */
     public static final String LENIENT_DATETIME_FORMAT = "yyyy-MM-dd'T'HH:mm:ss.SSSZ";
 
-    @Value("${ahoi.baseurl}")
-    private String basePath;
+    private String basePath = "https://banking-sandbox.starfinanz.de/ahoi/api";
     
     private boolean lenientOnJson = false;
     private boolean debugging = false;
