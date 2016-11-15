@@ -12,7 +12,7 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 public class Group {
-  private String name;
-  private String description;
-  private List<User> users;
+    private String name;
+    private String description;
+    private List<User> users;
 }

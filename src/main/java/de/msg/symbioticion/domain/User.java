@@ -10,13 +10,12 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 public class User {
-  private String uid;
-  private String firstName;
-  private String lastName;
-  private String nickName;
-  private String email;
-  private String iban;
-  private String bic;
+    private String firstName;
+    private String lastName;
+    private String nickName;
+    private String email;
+    private String iban;
+    private String bic;
 }
 
 

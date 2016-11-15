@@ -7,15 +7,16 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.List;
 
 @IgnoreExtraProperties
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
 public class Expense {
-  private BigDecimal amount;
-  private LocalDateTime timeOfExpense;
-  private String description;
-  private String tag;
+    private String sender;
+    private String recipient;
+    private BigDecimal amount;
+    private LocalDateTime timeOfExpense;
+    private String description;
+    private String tag;
 }

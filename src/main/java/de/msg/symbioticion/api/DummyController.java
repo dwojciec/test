@@ -53,7 +53,8 @@ public class DummyController {
         for (int i = 0; i < 2; i++) {
             String firstName = i % 2 == 0 ? "rafael" : "wolfgang";
             String lastName = i % 2 == 0 ? "rafael" : "wolfgang";
-            User user = new User("uid", firstName, lastName, "nickName", "DE527003250909", "BYLADEN1001");
+            String email = i % 2 == 0 ? "rafael.kansy@msg-systems.com" : "wolfgang.werner@msg-systems.com";
+            User user = new User(firstName, lastName, "nickName", email, "DE527003250909", "BYLADEN1001");
 
             DatabaseReference key = database.getRoot().child("/users/").push();
             key.setValue(user);
