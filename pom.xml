@@ -6,7 +6,7 @@
 	<groupId>de.msg</groupId>
 	<artifactId>split</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<packaging>jar</packaging>
+	<packaging>war</packaging>
 
 	<name>split</name>
 	<description>Share expenses in close-knit groups</description>
@@ -17,6 +17,12 @@
 		<java.version>1.8</java.version>
 		<spring-boot.version>1.4.2.RELEASE</spring-boot.version>
 		<enunciate.version>2.5.0</enunciate.version>
+
+		<swagger-core-version>1.5.9</swagger-core-version>
+		<okhttp-version>2.7.5</okhttp-version>
+		<gson-version>2.6.2</gson-version>
+		<jodatime-version>2.9.3</jodatime-version>
+		<maven-plugin-version>1.0.0</maven-plugin-version>
 	</properties>
 
 	<dependencyManagement>
@@ -38,6 +44,11 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-web</artifactId>
 		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-tomcat</artifactId>
+			<scope>provided</scope>
+		</dependency>
 
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -45,11 +56,36 @@
 			<scope>test</scope>
 		</dependency>
 		<!-- Provides annotations for extending the automatically generated HTTP 
-		API documentation -->
+			API documentation -->
 		<dependency>
 			<groupId>com.webcohesion.enunciate</groupId>
 			<artifactId>enunciate-core-annotations</artifactId>
 			<version>${enunciate.version}</version>
+		</dependency>
+
+		<!-- Swagger Client Deps -->
+		<dependency>
+			<groupId>io.swagger</groupId>
+			<artifactId>swagger-annotations</artifactId>
+			<version>${swagger-core-version}</version>
+		</dependency>
+		<dependency>
+			<groupId>com.squareup.okhttp</groupId>
+			<artifactId>okhttp</artifactId>
+			<version>${okhttp-version}</version>
+		</dependency>
+		<dependency>
+			<groupId>com.squareup.okhttp</groupId>
+			<artifactId>logging-interceptor</artifactId>
+			<version>${okhttp-version}</version>
+		</dependency>
+		<dependency>
+			<groupId>com.google.code.gson</groupId>
+			<artifactId>gson</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>joda-time</groupId>
+			<artifactId>joda-time</artifactId>
 		</dependency>
 	</dependencies>
 
@@ -64,6 +100,15 @@
 			</resource>
 		</resources>
 		<plugins>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<version>3.1</version>
+				<configuration>
+					<source>1.8</source>
+					<target>1.8</target>
+				</configuration>
+			</plugin>
 			<plugin> <!-- spring boot packaging for self contained runnable jar w/embedded tomcat -->
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
@@ -98,6 +143,12 @@
 						</configuration>
 					</execution>
 				</executions>
+			</plugin>
+			<plugin>
+				<artifactId>maven-war-plugin</artifactId>
+				<configuration>
+					<failOnMissingWebXml>false</failOnMissingWebXml>
+				</configuration>
 			</plugin>
 			<plugin> <!-- generate HTTP API documentation -->
 				<groupId>com.webcohesion.enunciate</groupId>

@@ -1,0 +1,3004 @@
+{
+  "swagger" : "2.0",
+  "info" : {
+    "description" : "AHOI (working title) is our managed and flexible banking API designed to offer easy access to your users bank accounts.\n\n[AHOI cookbook](/ahoi/docs/cookbook/index.html)\n\n[Imprint](https://symbioticon.de/legal-notices/)\n\n[Privacy Disclaimer](https://symbioticon.de/data-protection-guidelines/)\n\n&copy; 2016 Starfinanz - Ein Unternehmen der Finanz Informatik",
+    "version" : "2.0.0",
+    "title" : "AHOI API",
+    "termsOfService" : "https://symbioticon.de",
+    "contact" : {
+      "url" : "api@symbioticon.de"
+    }
+  },
+  "host" : "banking-sandbox.starfinanz.de",
+  "basePath" : "/ahoi/api",
+  "tags" : [ {
+    "name" : "Access",
+    "description" : "An access represents the connection between a provider and an account. It enables AHOI to log into a (bank) account on behalf of a user.\n\n  Setting up an access is relatively simple: A provider id is required, and the credential fields, which are used to access the provider, have to be set. The latter differ among the various providers. For example, for banks, it is common to use the account number and a secret pin. Other providers might use an e-mail address and a password.\n\n  In a production environment, the pin has to be encrypted.\n\n  Creating an access also allows AHOI to start interacting with the provider: It starts creating accounts, gathering transactions and classifying them. Deleting an access, on the other hand, also removes all associated information.\n\n  Furthermore, an access contains important information about its current state &mdash; for example, whether the account has been locked."
+  }, {
+    "name" : "Account",
+    "description" : "An account groups financial records (e.g., a bank account). In the case of a bank account, the account has an owner, bank identification number, account number and a balance. For an account to exist, an access first has to be created. Then, an account resource can be queried for transactions, transaction patterns and summaries. Also, it is possible to transfer money from one account to another.\n\n  AHOI allows you to give (user-defined) names to accounts to make them easily recognizable for end users. AHOIs automatic refresh of transactions and balances can also be toggled.\n\n  Notifications define rules related to accounts that trigger events. If set up, these events can be used to send push notifications."
+  }, {
+    "name" : "Forecast",
+    "description" : "The forecast resource provides a balance forecast for the end of the current month based on the current balance and the transaction patterns that are expected to occur up to the end of the current month. Those transaction patterns are also provided. The current month is determined by the latest `bookingDate` of transactions."
+  }, {
+    "name" : "Notification",
+    "description" : "Notifications express the user's interest in certain status updates and changes to the account. It defines rules for an account to trigger an event. If that event occurs, a notification is sent to the associated notification target (e.g., a push notification is sent). In order to work, a notification target has to be set up.\n\nPlease note that only one notification type can be created per target and account."
+  }, {
+    "name" : "Notification target",
+    "description" : "Notification targets are required to send notifications. A notification target represents something that receives notifications (e.g., a push token for sending push notifications to a mobile app)."
+  }, {
+    "name" : "Provider",
+    "description" : "Providers represent financial institutions such as banks. They provide information such as the name of the provider and which institutions AHOI is able to access. A provider is the starting point to set up an access to a provider, to create accounts and to receive transactions."
+  }, {
+    "name" : "TAN schemes",
+    "description" : "TAN schemes are the available methods for authorizing a transfer."
+  }, {
+    "name" : "Transaction",
+    "description" : "A transaction represents a financial operation related to an account. A bank account transaction holds information about the debtor and the creditor, the amount, information about the date and time of booking, its availability and its purpose (as found in the memo field).\n\n  Additionally, a transaction may be related to a recurring transaction pattern.\n\n  The length of the transaction list depends on the provider and the amount of time in which the account has already been set up within AHOI. The provided information may differ from provider to provider."
+  }, {
+    "name" : "Transaction pattern",
+    "description" : "Transaction patterns are the results of regularly recurring transactions. These patterns can be automatically recognized by AHOI. The recognition process starts after every account refresh and updates the previously discovered patterns.\n\n  Since the process is not 100% accurate, single transaction patterns can be deactivated or can be created manually by the user.\n\n  Transaction patterns are used to identify upcoming transactions and to calculate a balance forecast. They can be configured to be monthly, quarterly, semi-annually or annually recurring.\n\n  To automatically create a transaction pattern, there has to be at least three transactions related to this pattern.\n\n  One transaction pattern refers to many transactions and one account."
+  }, {
+    "name" : "Transaction summary",
+    "description" : "This resource returns a list of monthly summaries for an account for each month in which transactions are available. It contains balances and the total sum of incoming and outgoing transactions."
+  }, {
+    "name" : "Transfer",
+    "description" : "A resource for handling transfers."
+  } ],
+  "schemes" : [ "https" ],
+  "paths" : {
+    "/v2/accesses" : {
+      "get" : {
+        "tags" : [ "Access" ],
+        "summary" : "List accesses",
+        "description" : "Returns all registered accesses for the authenticated user. Confidential information like the PIN will not be returned.",
+        "operationId" : "getAccesses",
+        "produces" : [ "application/json" ],
+        "parameters" : [ ],
+        "responses" : {
+          "200" : {
+            "description" : "success",
+            "schema" : {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/definitions/Access"
+              }
+            }
+          },
+          "500" : {
+            "description" : "Internal server error"
+          },
+          "403" : {
+            "description" : "Not Authenticated"
+          },
+          "503" : {
+            "description" : "Service unavailable - Maintenance mode active"
+          }
+        },
+        "security" : [ {
+          "apiKey" : [ ]
+        } ]
+      },
+      "post" : {
+        "tags" : [ "Access" ],
+        "summary" : "Create a new access",
+        "description" : "Create a new access and setup all associated accounts and transactions. This will also trigger the creation of monthly transaction summaries, the analysis of all accounts for recurring transactions, and the calculation of the balance forecast.\n\n If the credentials were invalid, the validation state is set accordingly. \n\n It is possible to have multiple accesses for one user.",
+        "operationId" : "postAccess",
+        "consumes" : [ "application/json" ],
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "in" : "body",
+          "name" : "accessDto",
+          "description" : "A valid BankAccess object containing the required\n            **accessFields** as indicated by the provider object and the\n            **providerId**.",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/definitions/Access",
+            "example" : {
+              "providerId" : 0,
+              "type" : "BankAccess",
+              "accessFields" : {
+                "CUSTOMERNUMBER" : "<customernumber>",
+                "USERNAME" : "<username>",
+                "PIN" : "<pin>"
+              }
+            }
+          },
+          "x-examples" : {
+            "application/json" : "{\"providerId\":0,\"type\":\"BankAccess\",\"accessFields\":{\"CUSTOMERNUMBER\":\"<customernumber>\",\"USERNAME\":\"<username>\",\"PIN\":\"<pin>\"}}"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "success",
+            "schema" : {
+              "$ref" : "#/definitions/Access"
+            }
+          },
+          "201" : {
+            "description" : "Success - new access created"
+          },
+          "400" : {
+            "description" : "Bad Request - List<MessageDto> details on this error"
+          },
+          "500" : {
+            "description" : "Internal server error"
+          },
+          "403" : {
+            "description" : "Not Authenticated"
+          },
+          "502" : {
+            "description" : "Bad Gateway - Communication with provider failed"
+          },
+          "503" : {
+            "description" : "Service unavailable - Maintenance mode active"
+          }
+        },
+        "security" : [ {
+          "apiKey" : [ ]
+        } ]
+      }
+    },
+    "/v2/accesses/{accessId}" : {
+      "get" : {
+        "tags" : [ "Access" ],
+        "summary" : "Get access",
+        "description" : "Retrieve the access with **accessId**. The retrieved object does not contain sensitive information such as the PIN.",
+        "operationId" : "getAccess",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "accessId",
+          "in" : "path",
+          "description" : "The **id** for the access to retrieve.",
+          "required" : true,
+          "type" : "integer",
+          "format" : "int64"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "success",
+            "schema" : {
+              "$ref" : "#/definitions/Access"
+            }
+          },
+          "400" : {
+            "description" : "Bad Request - List of MessageDto with details on this error"
+          },
+          "500" : {
+            "description" : "Internal server error"
+          },
+          "403" : {
+            "description" : "Not Authenticated"
+          },
+          "503" : {
+            "description" : "Service unavailable - Maintenance mode active"
+          }
+        },
+        "security" : [ {
+          "apiKey" : [ ]
+        } ]
+      },
+      "put" : {
+        "tags" : [ "Access" ],
+        "summary" : "Update access",
+        "description" : "Update the access credentials in **accessFields**. If the access does not exist, the **accessId** does not match the **id** in **accessDto** or the **providerId** is not the same, the status code 404 is returned. If another access with the same login\n data already exists, the status code 409 is returned.\n The updated access is validated by setting up an account. The status code 200 does not imply that the credentials are correct. To check this the client should obtain access.",
+        "operationId" : "putAccess",
+        "consumes" : [ "application/json" ],
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "accessId",
+          "in" : "path",
+          "description" : "The **id** for the access to update.",
+          "required" : true,
+          "type" : "integer",
+          "format" : "int64"
+        }, {
+          "in" : "body",
+          "name" : "accessDto",
+          "description" : "The Access object that contains the changed credentials in\n            **accessFields**. Other fields cannot be edited.",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/definitions/Access"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "success",
+            "schema" : {
+              "$ref" : "#/definitions/Access"
+            }
+          },
+          "400" : {
+            "description" : "Bad Request - List<MessageDto> details on this error"
+          },
+          "500" : {
+            "description" : "Internal server error"
+          },
+          "403" : {
+            "description" : "Not Authenticated"
+          },
+          "404" : {
+            "description" : "Not Found"
+          },
+          "503" : {
+            "description" : "Service unavailable - Maintenance mode active"
+          },
+          "409" : {
+            "description" : "Conflict"
+          }
+        },
+        "security" : [ {
+          "apiKey" : [ ]
+        } ]
+      },
+      "delete" : {
+        "tags" : [ "Access" ],
+        "summary" : "Delete access",
+        "description" : "Delete access with **accessId** and all related accounts. This also deletes related notifications. If this is a user's last remaining access, all notification targets will also be deleted.",
+        "operationId" : "deleteAccess",
+        "parameters" : [ {
+          "name" : "accessId",
+          "in" : "path",
+          "description" : "The **id** for the access to delete",
+          "required" : true,
+          "type" : "integer",
+          "format" : "int64"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "success"
+          },
+          "400" : {
+            "description" : "Bad Request - List<MessageDto> details on this error"
+          },
+          "500" : {
+            "description" : "Internal server error"
+          },
+          "204" : {
+            "description" : "No Content - access was deleted"
+          },
+          "403" : {
+            "description" : "Not Authenticated"
+          },
+          "404" : {
+            "description" : "Not Found"
+          },
+          "503" : {
+            "description" : "Service unavailable - Maintenance mode active"
+          }
+        },
+        "security" : [ {
+          "apiKey" : [ ]
+        } ]
+      }
+    },
+    "/v2/accesses/{accessId}/accounts" : {
+      "get" : {
+        "tags" : [ "Account" ],
+        "summary" : "List accounts for access",
+        "description" : "Retrieve all accounts for the current user under the **accessId**.",
+        "operationId" : "getAccessAccounts",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "accessId",
+          "in" : "path",
+          "description" : "The **id** for the access for which to retrieve all accounts",
+          "required" : true,
+          "type" : "integer",
+          "format" : "int64"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "success",
+            "schema" : {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/definitions/Account"
+              }
+            }
+          },
+          "500" : {
+            "description" : "Internal server error"
+          },
+          "403" : {
+            "description" : "Not Authenticated"
+          },
+          "404" : {
+            "description" : "Not Found"
+          },
+          "503" : {
+            "description" : "Service unavailable - Maintenance mode active"
+          }
+        },
+        "security" : [ {
+          "apiKey" : [ ]
+        } ]
+      }
+    },
+    "/v2/accesses/{accessId}/tanschemes" : {
+      "get" : {
+        "tags" : [ "TAN schemes" ],
+        "summary" : "List TAN schemes for access",
+        "description" : "Retrieves all available TAN schemes for access.",
+        "operationId" : "getTanSchemes",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "accessId",
+          "in" : "path",
+          "description" : "The **id** for the access for which to retrieve the TAN list",
+          "required" : true,
+          "type" : "integer",
+          "format" : "int64"
+        }, {
+          "name" : "refresh",
+          "in" : "query",
+          "description" : "Optional &mdash; refreshes the TAN scheme list. If not provided, it\n            defaults to `false`.",
+          "required" : false,
+          "type" : "boolean"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "success",
+            "schema" : {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/definitions/TanScheme"
+              }
+            }
+          },
+          "500" : {
+            "description" : "Internal server error"
+          },
+          "204" : {
+            "description" : "No Content"
+          },
+          "403" : {
+            "description" : "Not Authenticated"
+          },
+          "503" : {
+            "description" : "Service unavailable - Maintenance mode active"
+          }
+        },
+        "security" : [ {
+          "apiKey" : [ ]
+        } ]
+      }
+    },
+    "/v2/accounts" : {
+      "get" : {
+        "tags" : [ "Account" ],
+        "summary" : "List accounts",
+        "description" : "Retrieve all accounts for the current user.",
+        "operationId" : "getAccounts",
+        "produces" : [ "application/json" ],
+        "parameters" : [ ],
+        "responses" : {
+          "200" : {
+            "description" : "success",
+            "schema" : {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/definitions/Account"
+              }
+            }
+          },
+          "500" : {
+            "description" : "Internal server error"
+          },
+          "403" : {
+            "description" : "Not Authenticated"
+          },
+          "404" : {
+            "description" : "Not Found"
+          },
+          "503" : {
+            "description" : "Service unavailable - Maintenance mode active"
+          }
+        },
+        "security" : [ {
+          "apiKey" : [ ]
+        } ]
+      }
+    },
+    "/v2/accounts/{accountId}" : {
+      "get" : {
+        "tags" : [ "Account" ],
+        "summary" : "Get account",
+        "description" : "Returns the account identified by **accountId**.",
+        "operationId" : "getAccount",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "accountId",
+          "in" : "path",
+          "description" : "The **id** for the account to retrieve",
+          "required" : true,
+          "type" : "integer",
+          "format" : "int64"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "success",
+            "schema" : {
+              "$ref" : "#/definitions/Account"
+            }
+          },
+          "500" : {
+            "description" : "Internal server error"
+          },
+          "403" : {
+            "description" : "Not Authenticated"
+          },
+          "404" : {
+            "description" : "Not Found"
+          },
+          "503" : {
+            "description" : "Service unavailable - Maintenance mode active"
+          }
+        },
+        "security" : [ {
+          "apiKey" : [ ]
+        } ]
+      },
+      "delete" : {
+        "tags" : [ "Account" ],
+        "summary" : "Delete account",
+        "description" : "Delete the account identified by **accountId**. ",
+        "operationId" : "deleteAccount",
+        "parameters" : [ {
+          "name" : "accountId",
+          "in" : "path",
+          "description" : "The **id** for the account to delete",
+          "required" : true,
+          "type" : "integer",
+          "format" : "int64"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "success"
+          },
+          "500" : {
+            "description" : "Internal server error"
+          },
+          "204" : {
+            "description" : "No Content - account was deleted"
+          },
+          "403" : {
+            "description" : "Not Authenticated"
+          },
+          "404" : {
+            "description" : "Not Found"
+          },
+          "503" : {
+            "description" : "Service unavailable - Maintenance mode active"
+          }
+        },
+        "security" : [ {
+          "apiKey" : [ ]
+        } ]
+      }
+    },
+    "/v2/accounts/{accountId}/automaticrefresh/{automatic}" : {
+      "put" : {
+        "tags" : [ "Account" ],
+        "summary" : "Enable automatic refresh for account",
+        "description" : "After creating an access, you need to enable automatic refresh if you wish to continuously update your account data and receive configured notifications.",
+        "operationId" : "automaticRefresh",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "accountId",
+          "in" : "path",
+          "description" : "The **id** for which to set the automatic refresh",
+          "required" : true,
+          "type" : "integer",
+          "format" : "int64"
+        }, {
+          "name" : "automatic",
+          "in" : "path",
+          "description" : "`true` if the automatic refresh should be activated, otherwise `false`",
+          "required" : true,
+          "type" : "string"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "success",
+            "schema" : {
+              "$ref" : "#/definitions/Account"
+            }
+          },
+          "500" : {
+            "description" : "Internal server error"
+          },
+          "403" : {
+            "description" : "Not Authenticated"
+          },
+          "404" : {
+            "description" : "Not Found"
+          },
+          "503" : {
+            "description" : "Service unavailable - Maintenance mode active"
+          }
+        },
+        "security" : [ {
+          "apiKey" : [ ]
+        } ]
+      }
+    },
+    "/v2/accounts/{accountId}/forecast" : {
+      "get" : {
+        "tags" : [ "Forecast" ],
+        "summary" : "Get balance forecast",
+        "description" : "The current month is determined by latest `bookingDate` of transactions.\n The request also retrieves the transaction patterns expected to be applied until the end of the current month.",
+        "operationId" : "getForecast",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "accountId",
+          "in" : "path",
+          "description" : "The **accountId** for which to retrieve forecasts",
+          "required" : true,
+          "type" : "integer",
+          "format" : "int64"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "success",
+            "schema" : {
+              "$ref" : "#/definitions/Forecast"
+            }
+          },
+          "400" : {
+            "description" : "Bad Request - forecast not available for current month, update\n       turnovers first"
+          },
+          "500" : {
+            "description" : "Internal server error"
+          },
+          "403" : {
+            "description" : "Not Authenticated"
+          },
+          "404" : {
+            "description" : "Not Found"
+          },
+          "503" : {
+            "description" : "Service unavailable - Maintenance mode active"
+          }
+        },
+        "security" : [ {
+          "apiKey" : [ ]
+        } ]
+      }
+    },
+    "/v2/accounts/{accountId}/transactionpatterns" : {
+      "get" : {
+        "tags" : [ "Transaction pattern" ],
+        "summary" : "List transaction patterns for account",
+        "description" : "Returns all transaction pattern for **accountId**. Transaction patterns are recurring transactions automatically identified by the server or manually created via [create transaction pattern](#!/Transaction_pattern/postTransactionPattern).",
+        "operationId" : "listTransactionPatterns",
+        "consumes" : [ "application/json" ],
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "accountId",
+          "in" : "path",
+          "description" : "The **accountId** for which to retrieve transaction patterns",
+          "required" : true,
+          "type" : "integer",
+          "format" : "int64"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "success",
+            "schema" : {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/definitions/TransactionPattern"
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request - List of MessageDto with details on this error"
+          },
+          "500" : {
+            "description" : "Internal server error"
+          },
+          "403" : {
+            "description" : "Not Authenticated"
+          },
+          "404" : {
+            "description" : "Not Found"
+          },
+          "503" : {
+            "description" : "Service unavailable - Maintenance mode active"
+          }
+        },
+        "security" : [ {
+          "apiKey" : [ ]
+        } ]
+      },
+      "post" : {
+        "tags" : [ "Transaction pattern" ],
+        "summary" : "Create a new pattern",
+        "description" : "Create a new pattern for an **accountId**. The **cycle** can be one of `MONTHLY`, `QUARTERLY`, `SEMI_ANNUALLY` or `ANNUALLY`. The **day** can be between `1` and `366`, depending on **cycle**:\n\n| cycle | day range | example |\n| --- | --- | --- |\n| `MONTHLY` | `1`-`31`  | every 29th of the month => `29` |\n| `QUARTERLY` | `1`-`92`  | 23rd of February (23rd of May, etc.) => `54` (31 [complete first month] + 23 [days in second month]) |\n| `SEMI_ANNUALLY` | `1`-`184` | 1st of May and 1st of November => `121` (for first half of year: 31 + 28 + 31 + 30 + 1) |\n| `ANNUALLY` | `1`-`366` | 24th of December => `358` |\n\nIf a similar pattern already exists, you will receive an HTTP status code 409.",
+        "operationId" : "postTransactionPattern",
+        "consumes" : [ "application/json" ],
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "in" : "body",
+          "name" : "transactionPatternDto",
+          "description" : "The transaction pattern to create",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/definitions/TransactionPattern",
+            "example" : {
+              "state" : "ACTIVE",
+              "cycle" : "ANNUALLY",
+              "day" : 185,
+              "relatedAccountOwner" : "Stan S. Stanman",
+              "amount" : {
+                "value" : 5000,
+                "currency" : "EUR"
+              },
+              "accountNumber" : "DE00999940000317899806",
+              "bankCode" : "99994000",
+              "kind" : "Lastschrift"
+            }
+          },
+          "x-examples" : {
+            "application/json" : "{\"state\":\"ACTIVE\",\"cycle\":\"ANNUALLY\",\"day\":185,\"relatedAccountOwner\":\"Stan S. Stanman\",\"amount\":{\"value\":5000,\"currency\":\"EUR\"},\"accountNumber\":\"DE00999940000317899806\",\"bankCode\":\"99994000\",\"kind\":\"Lastschrift\"}"
+          }
+        }, {
+          "name" : "accountId",
+          "in" : "path",
+          "description" : "The **accountId** to which the new created pattern is associated with",
+          "required" : true,
+          "type" : "integer",
+          "format" : "int64"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "success",
+            "schema" : {
+              "$ref" : "#/definitions/TransactionPattern"
+            }
+          },
+          "201" : {
+            "description" : "Created"
+          },
+          "400" : {
+            "description" : "Bad Request - List of MessageDto with details on this error"
+          },
+          "500" : {
+            "description" : "Internal server error"
+          },
+          "403" : {
+            "description" : "Not Authenticated"
+          },
+          "404" : {
+            "description" : "Not Found"
+          },
+          "503" : {
+            "description" : "Service unavailable - Maintenance mode active"
+          },
+          "409" : {
+            "description" : "Conflict"
+          }
+        },
+        "security" : [ {
+          "apiKey" : [ ]
+        } ]
+      }
+    },
+    "/v2/accounts/{accountId}/transactionpatterns/{patternId}" : {
+      "get" : {
+        "tags" : [ "Transaction pattern" ],
+        "summary" : "Get transaction pattern",
+        "description" : "Returns the transaction pattern identified by **patternId** in relationship with\n **accountId**.",
+        "operationId" : "getTransactionPattern",
+        "consumes" : [ "application/json" ],
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "patternId",
+          "in" : "path",
+          "description" : "The **patternId** for the pattern to retrieve",
+          "required" : true,
+          "type" : "integer",
+          "format" : "int64"
+        }, {
+          "name" : "accountId",
+          "in" : "path",
+          "description" : "The **accoundId** for the pattern to retrieve",
+          "required" : true,
+          "type" : "integer",
+          "format" : "int64"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "success",
+            "schema" : {
+              "$ref" : "#/definitions/TransactionPattern"
+            }
+          },
+          "400" : {
+            "description" : "Bad Request - List of MessageDto with details on this error"
+          },
+          "500" : {
+            "description" : "Internal server error"
+          },
+          "403" : {
+            "description" : "Not Authenticated"
+          },
+          "404" : {
+            "description" : "Not Found"
+          },
+          "503" : {
+            "description" : "Service unavailable - Maintenance mode active"
+          }
+        },
+        "security" : [ {
+          "apiKey" : [ ]
+        } ]
+      },
+      "delete" : {
+        "tags" : [ "Transaction pattern" ],
+        "summary" : "Delete transaction pattern",
+        "description" : "Delete the transaction pattern identified by the **patternId**. All associated transactions will be updated to {{patternId = null}}.",
+        "operationId" : "deleteTransactionPattern",
+        "consumes" : [ "application/json" ],
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "patternId",
+          "in" : "path",
+          "description" : "The **patternId** to delete",
+          "required" : true,
+          "type" : "integer",
+          "format" : "int64"
+        }, {
+          "name" : "accountId",
+          "in" : "path",
+          "description" : "The **accountId** for the transaction pattern to delete",
+          "required" : true,
+          "type" : "integer",
+          "format" : "int64"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "success"
+          },
+          "400" : {
+            "description" : "Bad Request - List of MessageDto with details on this error"
+          },
+          "500" : {
+            "description" : "Internal server error"
+          },
+          "403" : {
+            "description" : "Not Authenticated"
+          },
+          "404" : {
+            "description" : "Not Found"
+          },
+          "503" : {
+            "description" : "Service unavailable - Maintenance mode active"
+          }
+        },
+        "security" : [ {
+          "apiKey" : [ ]
+        } ]
+      }
+    },
+    "/v2/accounts/{accountId}/transactionpatterns/{patternId}/active/{activated}" : {
+      "put" : {
+        "tags" : [ "Transaction pattern" ],
+        "summary" : "Enable a transaction pattern",
+        "description" : "Disabling the transaction pattern results in ignoring the pattern in the forecast. The transaction still exists and relations with transactions are not modified.",
+        "operationId" : "activateTransactionPattern",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "patternId",
+          "in" : "path",
+          "description" : "The **patternId** to (de)activate",
+          "required" : true,
+          "type" : "integer",
+          "format" : "int64"
+        }, {
+          "name" : "activated",
+          "in" : "path",
+          "description" : "If `true`, the pattern will be used for forecast calculations;\n        `false` will be ignored",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "accountId",
+          "in" : "path",
+          "description" : "The **accountId** for which to activate the pattern",
+          "required" : true,
+          "type" : "integer",
+          "format" : "int64"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "success",
+            "schema" : {
+              "$ref" : "#/definitions/TransactionPattern"
+            }
+          },
+          "400" : {
+            "description" : "Bad Request - List of MessageDto with details on this error"
+          },
+          "500" : {
+            "description" : "Internal server error"
+          },
+          "403" : {
+            "description" : "Not Authenticated"
+          },
+          "404" : {
+            "description" : "Not Found"
+          },
+          "503" : {
+            "description" : "Service unavailable - Maintenance mode active"
+          }
+        },
+        "security" : [ {
+          "apiKey" : [ ]
+        } ]
+      }
+    },
+    "/v2/accounts/{accountId}/transactionpatterns/{patternId}/transactions" : {
+      "get" : {
+        "tags" : [ "Transaction" ],
+        "summary" : "List transactions for pattern",
+        "description" : "Retrieve all transactions for **patternId**.",
+        "operationId" : "listTransactionsForPattern",
+        "consumes" : [ "application/json" ],
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "patternId",
+          "in" : "path",
+          "description" : "The **patternId** for which to retrieve transactions",
+          "required" : true,
+          "type" : "integer",
+          "format" : "int64"
+        }, {
+          "name" : "max-age",
+          "in" : "query",
+          "description" : "Optional &mdash; indicates the maximum acceptable timeframe (in seconds) since the last refresh of the given account",
+          "required" : false,
+          "type" : "integer",
+          "format" : "int64"
+        }, {
+          "name" : "limit",
+          "in" : "query",
+          "description" : "Optional &mdash; limit the number of returned transactions",
+          "required" : false,
+          "type" : "integer",
+          "format" : "int32"
+        }, {
+          "name" : "offset",
+          "in" : "query",
+          "description" : "Optional &mdash; skip the first ${offset} transactions in result",
+          "required" : false,
+          "type" : "integer",
+          "format" : "int32"
+        }, {
+          "name" : "from",
+          "in" : "query",
+          "description" : "Optional &mdash; only return transactions with a booking date later than ${from}; an ISO8601 Month(2014-11), Date (2014-11-17) or DateTime\n        (2014-11-17T12:00:00Z)",
+          "required" : false,
+          "type" : "string"
+        }, {
+          "name" : "to",
+          "in" : "query",
+          "description" : "Optional &mdash; only return transactions with a booking date prior or equal to ${to}; an ISO8601 Date, Month or DateTime",
+          "required" : false,
+          "type" : "string"
+        }, {
+          "name" : "accountId",
+          "in" : "path",
+          "description" : "The **accountId** for which to retrieve transactions",
+          "required" : true,
+          "type" : "integer",
+          "format" : "int64"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "success",
+            "schema" : {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/definitions/Transaction"
+              }
+            }
+          },
+          "233" : {
+            "description" : "Success - but content was not refreshed (provider is\n       blacklisted/COM protocol is not supported)"
+          },
+          "400" : {
+            "description" : "Bad Request - List of MessageDto with details on this error"
+          },
+          "203" : {
+            "description" : "Success - but content was not refreshed (perhaps no access with\n       ValidationState=OK)"
+          },
+          "500" : {
+            "description" : "Internal server error"
+          },
+          "403" : {
+            "description" : "Not Authenticated"
+          },
+          "404" : {
+            "description" : "Not Found"
+          },
+          "503" : {
+            "description" : "Service unavailable - Maintenance mode active"
+          }
+        },
+        "security" : [ {
+          "apiKey" : [ ]
+        } ]
+      }
+    },
+    "/v2/accounts/{accountId}/transactions" : {
+      "get" : {
+        "tags" : [ "Transaction" ],
+        "summary" : "List transactions for account",
+        "description" : "Retrieve all transactions for **accountId**.",
+        "operationId" : "listTransactions",
+        "consumes" : [ "application/json" ],
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "max-age",
+          "in" : "query",
+          "description" : "Optional &mdash; indicates the maximum acceptable timeframe (in seconds) since the last refresh of the given account.",
+          "required" : false,
+          "type" : "integer",
+          "format" : "int64"
+        }, {
+          "name" : "limit",
+          "in" : "query",
+          "description" : "Optional &mdash; limit the number of returned transactions",
+          "required" : false,
+          "type" : "integer",
+          "format" : "int32"
+        }, {
+          "name" : "offset",
+          "in" : "query",
+          "description" : "Optional &mdash; skip the first ${offset} transactions in result",
+          "required" : false,
+          "type" : "integer",
+          "format" : "int32"
+        }, {
+          "name" : "from",
+          "in" : "query",
+          "description" : "Optional &mdash; only return transactions with booking date later than ${from}; an ISO8601 Month(2014-11), Date (2014-11-17) or DateTime\n        (2014-11-17T12:00:00Z)",
+          "required" : false,
+          "type" : "string"
+        }, {
+          "name" : "to",
+          "in" : "query",
+          "description" : "Optional &mdash; only return transactions with booking date prior or equal to ${to}; an ISO8601 Date, Month or DateTime",
+          "required" : false,
+          "type" : "string"
+        }, {
+          "name" : "accountId",
+          "in" : "path",
+          "description" : "The **accountId** for which to retrieve transactions.",
+          "required" : true,
+          "type" : "integer",
+          "format" : "int64"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "success",
+            "schema" : {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/definitions/Transaction"
+              }
+            }
+          },
+          "233" : {
+            "description" : "Success - but content was not refreshed (provider is\n       blacklisted/COM protocol is not supported)"
+          },
+          "400" : {
+            "description" : "Bad Request - List of MessageDto with details on this error"
+          },
+          "203" : {
+            "description" : "Success - but content was not refreshed (perhaps no access with\n       ValidationState=OK)"
+          },
+          "500" : {
+            "description" : "Internal server error"
+          },
+          "403" : {
+            "description" : "Not Authenticated"
+          },
+          "404" : {
+            "description" : "Not Found"
+          },
+          "503" : {
+            "description" : "Service unavailable - Maintenance mode active"
+          }
+        },
+        "security" : [ {
+          "apiKey" : [ ]
+        } ]
+      }
+    },
+    "/v2/accounts/{accountId}/transactions/{transactionId}" : {
+      "get" : {
+        "tags" : [ "Transaction" ],
+        "summary" : "Get transaction",
+        "description" : "Returns the transaction identified by **transactionId** in relationship with **accountId**.",
+        "operationId" : "getTransaction",
+        "consumes" : [ "application/json" ],
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "transactionId",
+          "in" : "path",
+          "description" : "The **transactionId** for the pattern to retrieve",
+          "required" : true,
+          "type" : "integer",
+          "format" : "int64"
+        }, {
+          "name" : "accountId",
+          "in" : "path",
+          "description" : "The **accountId** for the transaction to retrieve",
+          "required" : true,
+          "type" : "integer",
+          "format" : "int64"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "success",
+            "schema" : {
+              "$ref" : "#/definitions/Transaction"
+            }
+          },
+          "400" : {
+            "description" : "Bad Request - List of MessageDto with details on this error"
+          },
+          "500" : {
+            "description" : "Internal server error"
+          },
+          "403" : {
+            "description" : "Not Authenticated"
+          },
+          "404" : {
+            "description" : "Not Found"
+          },
+          "503" : {
+            "description" : "Service unavailable - Maintenance mode active"
+          }
+        },
+        "security" : [ {
+          "apiKey" : [ ]
+        } ]
+      }
+    },
+    "/v2/accounts/{accountId}/transactionsummaries" : {
+      "get" : {
+        "tags" : [ "Transaction summary" ],
+        "summary" : "List account summaries",
+        "description" : "Retrieve account summaries and provide a sum for incoming and outgoing transactions.",
+        "operationId" : "listSummary",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "limit",
+          "in" : "query",
+          "description" : "Optional &mdash; limit the number of returned summary entries",
+          "required" : false,
+          "type" : "integer",
+          "format" : "int32"
+        }, {
+          "name" : "offset",
+          "in" : "query",
+          "description" : "Optional &mdash; skip the first ${offset} summary entries in the result",
+          "required" : false,
+          "type" : "integer",
+          "format" : "int32"
+        }, {
+          "name" : "from",
+          "in" : "query",
+          "description" : "Optional &mdash; only return summary entries later than ${from}; an\n        ISO8601 Date (2014-11-17)",
+          "required" : false,
+          "type" : "string"
+        }, {
+          "name" : "to",
+          "in" : "query",
+          "description" : "Optional &mdash; only return summary entries prior or equal to\n        ${to}; an ISO8601 Date",
+          "required" : false,
+          "type" : "string"
+        }, {
+          "name" : "accountId",
+          "in" : "path",
+          "description" : "The **accountId** for which to list the summaries",
+          "required" : true,
+          "type" : "integer",
+          "format" : "int64"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "success",
+            "schema" : {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/definitions/MonthlySummary"
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request - List of MessageDto with details on this error"
+          },
+          "500" : {
+            "description" : "Internal server error"
+          },
+          "403" : {
+            "description" : "Not Authenticated"
+          },
+          "404" : {
+            "description" : "Not Found"
+          },
+          "503" : {
+            "description" : "Service unavailable - Maintenance mode active"
+          }
+        },
+        "security" : [ {
+          "apiKey" : [ ]
+        } ]
+      }
+    },
+    "/v2/accounts/{accountId}/transfers" : {
+      "post" : {
+        "tags" : [ "Transfer" ],
+        "summary" : "Create a new transfer",
+        "description" : "The transfer represents a money\n transfer from the account identified by its ID to another bank account.\n\n **Please note:** Exception from the norm. This POST request will not return\n the two header fields X-Id and Location. Also, the returned JSON document\n does not represent the transfer entity but rather a temporary placeholder.",
+        "operationId" : "postTransfer",
+        "consumes" : [ "application/json" ],
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "in" : "body",
+          "name" : "transfer",
+          "description" : "The *Transfer* object to initiate a transfer",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/definitions/Transfer",
+            "example" : {
+              "iban" : "DE00999940000651695227",
+              "bic" : "TESTBICXXX",
+              "name" : "Stan S. Stanman",
+              "amount" : {
+                "value" : 5000,
+                "currency" : "EUR"
+              },
+              "purpose" : "Lease",
+              "tanScheme" : "SMSTAN",
+              "tanMediaId" : 1
+            }
+          },
+          "x-examples" : {
+            "application/json" : "{\"iban\":\"DE00999940000651695227\",\"bic\":\"TESTBICXXX\",\"name\":\"Stan S. Stanman\",\"amount\":{\"value\":5000,\"currency\":\"EUR\"},\"purpose\":\"Lease\",\"tanScheme\":\"SMSTAN\",\"tanMediaId\":1}"
+          }
+        }, {
+          "name" : "accountId",
+          "in" : "path",
+          "description" : "The **accountId** for the transfer",
+          "required" : true,
+          "type" : "integer",
+          "format" : "int64"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "success",
+            "schema" : {
+              "$ref" : "#/definitions/TransferChallenge"
+            }
+          },
+          "201" : {
+            "description" : "Created"
+          },
+          "400" : {
+            "description" : "Bad Request - List of MessageDto with details on this error"
+          },
+          "500" : {
+            "description" : "Internal server error"
+          },
+          "403" : {
+            "description" : "Not Authenticated"
+          },
+          "404" : {
+            "description" : "Not Found"
+          },
+          "503" : {
+            "description" : "Service unavailable - Maintenance mode active"
+          }
+        },
+        "security" : [ {
+          "apiKey" : [ ]
+        } ]
+      }
+    },
+    "/v2/accounts/{accountId}/transfers/{taskId}/authorize" : {
+      "post" : {
+        "tags" : [ "Transfer" ],
+        "summary" : "Create a transfer authorization",
+        "description" : "**Please note:** Exception from the norm. This POST request will not return\n the two header fields X-Id and Location. The returned JSON document\n represents the transfer.",
+        "operationId" : "postAuthorization",
+        "consumes" : [ "application/json" ],
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "in" : "body",
+          "name" : "transferChallengeResponse",
+          "description" : "The *TransferChallengeResponse* object to authorize the transfer",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/definitions/TransferChallengeResponse",
+            "example" : {
+              "transferTaskId" : 4,
+              "responseObjects" : {
+                "TAN" : "<TAN>"
+              }
+            }
+          },
+          "x-examples" : {
+            "application/json" : "{\"transferTaskId\":4,\"responseObjects\":{\"TAN\":\"<TAN>\"}}"
+          }
+        }, {
+          "name" : "accountId",
+          "in" : "path",
+          "description" : "The **account** for the triggered authorization",
+          "required" : true,
+          "type" : "integer",
+          "format" : "int64"
+        }, {
+          "name" : "taskId",
+          "in" : "path",
+          "description" : "The **taskId** given in the TransferChallenge",
+          "required" : true,
+          "type" : "integer",
+          "format" : "int64"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "success"
+          },
+          "201" : {
+            "description" : "Created"
+          },
+          "400" : {
+            "description" : "Bad Request - List of MessageDto with details on this error"
+          },
+          "500" : {
+            "description" : "Internal server error"
+          },
+          "403" : {
+            "description" : "Not Authenticated"
+          },
+          "404" : {
+            "description" : "Not Found"
+          },
+          "503" : {
+            "description" : "Service unavailable - Maintenance mode active"
+          }
+        },
+        "security" : [ {
+          "apiKey" : [ ]
+        } ]
+      }
+    },
+    "/v2/accounts/{accountId}/userdefinedname/{name}" : {
+      "put" : {
+        "tags" : [ "Account" ],
+        "summary" : "Update account name",
+        "description" : "Update the account name used in AHOI. Name must be URL encoded.",
+        "operationId" : "updateAccount",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "accountId",
+          "in" : "path",
+          "description" : "The **id** for which the user-defined account name should be altered",
+          "required" : true,
+          "type" : "integer",
+          "format" : "int64"
+        }, {
+          "name" : "name",
+          "in" : "path",
+          "description" : "The new URL-encoded name",
+          "required" : true,
+          "type" : "string"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "success",
+            "schema" : {
+              "$ref" : "#/definitions/Account"
+            }
+          },
+          "500" : {
+            "description" : "Internal server error"
+          },
+          "403" : {
+            "description" : "Not Authenticated"
+          },
+          "404" : {
+            "description" : "Not Found"
+          },
+          "503" : {
+            "description" : "Service unavailable - Maintenance mode active"
+          }
+        },
+        "security" : [ {
+          "apiKey" : [ ]
+        } ]
+      }
+    },
+    "/v2/notificationtargets" : {
+      "get" : {
+        "tags" : [ "Notification target" ],
+        "summary" : "List notification targets",
+        "description" : "Retrieve all notification targets for the authenticated client.",
+        "operationId" : "getNotificationTargets",
+        "produces" : [ "application/json" ],
+        "parameters" : [ ],
+        "responses" : {
+          "200" : {
+            "description" : "success",
+            "schema" : {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/definitions/NotificationTarget"
+              }
+            }
+          },
+          "500" : {
+            "description" : "Internal server error"
+          },
+          "403" : {
+            "description" : "Not Authenticated"
+          },
+          "503" : {
+            "description" : "Service unavailable - Maintenance mode active"
+          }
+        },
+        "security" : [ {
+          "apiKey" : [ ]
+        } ]
+      },
+      "post" : {
+        "tags" : [ "Notification target" ],
+        "summary" : "Create a new notification target",
+        "description" : "Create a new notification target to receive configured notifications. \nThe two current supported systems are the Apple Push Notification service (APNs) for `IOS` devices and Google Cloud Messaging (GCM) for `ANDROID`, which must be supplied in **state**.\nThe **appToken** must contain the unique identifier you receive after registering your device with the messaging services.\nThe **locale** must comply to ISO 3166 language code. Currently only `de_DE` is supported. ",
+        "operationId" : "postNotificationTarget",
+        "consumes" : [ "application/json" ],
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "in" : "body",
+          "name" : "notificationTargetDto",
+          "description" : "The notification target to create",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/definitions/NotificationTarget",
+            "example" : {
+              "appToken" : "EXAMPLEZFTGHUIOHUGZFTRFZGHUIJBGFCTT5675KNBJHGVCFGHKLNKBNMBVGEXAMPLE",
+              "productId" : "sandbox-product",
+              "operatingSystem" : "ANDROID",
+              "locale" : "de_DE"
+            }
+          },
+          "x-examples" : {
+            "application/json" : "{\"appToken\":\"EXAMPLEZFTGHUIOHUGZFTRFZGHUIJBGFCTT5675KNBJHGVCFGHKLNKBNMBVGEXAMPLE\",\"productId\":\"sandbox-product\",\"operatingSystem\":\"ANDROID\",\"locale\":\"de_DE\"}"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "success",
+            "schema" : {
+              "$ref" : "#/definitions/NotificationTarget"
+            }
+          },
+          "201" : {
+            "description" : "Created"
+          },
+          "400" : {
+            "description" : "Bad Request - List of MessageDto with details on this error"
+          },
+          "500" : {
+            "description" : "Internal server error"
+          },
+          "403" : {
+            "description" : "Not Authenticated"
+          },
+          "503" : {
+            "description" : "Service unavailable - Maintenance mode active"
+          }
+        },
+        "security" : [ {
+          "apiKey" : [ ]
+        } ]
+      }
+    },
+    "/v2/notificationtargets/{targetId}" : {
+      "get" : {
+        "tags" : [ "Notification target" ],
+        "summary" : "Get notification target",
+        "description" : "Retrieve notification target identified by **targetId**.",
+        "operationId" : "getNotificationTarget",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "targetId",
+          "in" : "path",
+          "description" : "The **targetId** to retrieve",
+          "required" : true,
+          "type" : "integer",
+          "format" : "int64"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "success",
+            "schema" : {
+              "$ref" : "#/definitions/NotificationTarget"
+            }
+          },
+          "500" : {
+            "description" : "Internal server error"
+          },
+          "403" : {
+            "description" : "Not Authenticated"
+          },
+          "404" : {
+            "description" : "Not Found"
+          },
+          "503" : {
+            "description" : "Service unavailable - Maintenance mode active"
+          }
+        },
+        "security" : [ {
+          "apiKey" : [ ]
+        } ]
+      },
+      "put" : {
+        "tags" : [ "Notification target" ],
+        "summary" : "Update notification target",
+        "description" : "Update a notification target. Usually used to change the **appToken** since the messaging services alter those periodically. The **id** in **notificationDto** must match the **targetId**.",
+        "operationId" : "putNotificationTarget",
+        "consumes" : [ "application/json" ],
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "targetId",
+          "in" : "path",
+          "description" : "The **targetId** to update",
+          "required" : true,
+          "type" : "integer",
+          "format" : "int64"
+        }, {
+          "in" : "body",
+          "name" : "notificationTargetDto",
+          "description" : "The notification target with updated token",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/definitions/NotificationTarget"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "success",
+            "schema" : {
+              "$ref" : "#/definitions/NotificationTarget"
+            }
+          },
+          "400" : {
+            "description" : "Bad Request - List of MessageDto with details on this error"
+          },
+          "500" : {
+            "description" : "Internal server error"
+          },
+          "403" : {
+            "description" : "Not Authenticated"
+          },
+          "503" : {
+            "description" : "Service unavailable - Maintenance mode active"
+          }
+        },
+        "security" : [ {
+          "apiKey" : [ ]
+        } ]
+      },
+      "delete" : {
+        "tags" : [ "Notification target" ],
+        "summary" : "Delete notification target",
+        "description" : "Delete a notification target identified by **targetId**. Also deletes associated notifications.",
+        "operationId" : "deleteNotificationTarget",
+        "consumes" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "targetId",
+          "in" : "path",
+          "description" : "The **targetId** to delete",
+          "required" : true,
+          "type" : "integer",
+          "format" : "int64"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "success"
+          },
+          "400" : {
+            "description" : "Bad Request - List of MessageDto with details on this error"
+          },
+          "500" : {
+            "description" : "Internal server error"
+          },
+          "204" : {
+            "description" : "No Content - notification target was deleted"
+          },
+          "403" : {
+            "description" : "Not Authenticated"
+          },
+          "503" : {
+            "description" : "Service unavailable - Maintenance mode active"
+          }
+        },
+        "security" : [ {
+          "apiKey" : [ ]
+        } ]
+      }
+    },
+    "/v2/notificationtargets/{targetId}/notifications" : {
+      "get" : {
+        "tags" : [ "Notification" ],
+        "summary" : "List notifications",
+        "description" : "Retrieve all notifications associated with **targetId**.",
+        "operationId" : "getNotifications",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "targetId",
+          "in" : "path",
+          "description" : "The **targetId** for which to retrieve notifications",
+          "required" : true,
+          "type" : "integer",
+          "format" : "int64"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "success",
+            "schema" : {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/definitions/Notification"
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request - List of MessageDto with details on this error"
+          },
+          "500" : {
+            "description" : "Internal server error"
+          },
+          "403" : {
+            "description" : "Not Authenticated"
+          },
+          "503" : {
+            "description" : "Service unavailable - Maintenance mode active"
+          }
+        },
+        "security" : [ {
+          "apiKey" : [ ]
+        } ]
+      }
+    },
+    "/v2/notificationtargets/{targetId}/notifications/balancechangenotification" : {
+      "post" : {
+        "tags" : [ "Notification" ],
+        "summary" : "Create a balance change notification",
+        "description" : "Only one notification per target and account can be created.\n\n Receive notifications when the balance crosses the configured threshold; only one of **lowerThreshold** and **upperThreshold** may be set. \n\n This example sends a notification when the balance is less than 0 &euro; \n\n ```json\n{\n  \"type\": \"BalanceChangeNotification\",\n  \"accountId\": 0,\n  \"upperThreshold\": {\n    \"value\": 0,\n    \"currency\": \"EUR\"\n  }\n}\n```",
+        "operationId" : "postBalanceChangeNotification",
+        "consumes" : [ "application/json" ],
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "targetId",
+          "in" : "path",
+          "description" : "The **targetId** for which to create the notification",
+          "required" : true,
+          "type" : "integer",
+          "format" : "int64"
+        }, {
+          "in" : "body",
+          "name" : "notificationDto",
+          "description" : "The balance change notification to create",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/definitions/BalanceChangeNotification",
+            "example" : {
+              "type" : "BalanceChangeNotification",
+              "accountId" : 123,
+              "lowerThreshold" : {
+                "value" : 10000,
+                "currency" : "EUR"
+              }
+            }
+          },
+          "x-examples" : {
+            "application/json" : "{\"type\":\"BalanceChangeNotification\",\"accountId\":123,\"lowerThreshold\":{\"value\":10000,\"currency\":\"EUR\"}}"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "success",
+            "schema" : {
+              "$ref" : "#/definitions/BalanceChangeNotification"
+            }
+          },
+          "201" : {
+            "description" : "Created"
+          },
+          "400" : {
+            "description" : "Bad Request - List of MessageDto with details on this error"
+          },
+          "500" : {
+            "description" : "Internal server error"
+          },
+          "403" : {
+            "description" : "Not Authenticated"
+          },
+          "503" : {
+            "description" : "Service unavailable - Maintenance mode active"
+          }
+        },
+        "security" : [ {
+          "apiKey" : [ ]
+        } ]
+      }
+    },
+    "/v2/notificationtargets/{targetId}/notifications/budgetnotification" : {
+      "post" : {
+        "tags" : [ "Notification" ],
+        "summary" : "Create a budget change notification",
+        "description" : "Receive notifications when the calculated budget for the current month crosses the configured threshold; only one of **lowerThreshold** and **upperThreshold** may be set. \n\n This example send a notification when the budget crosses 100 &euro; \n\n ```json\n{\n  \"type\": \"BudgetNotification\",\n  \"accountId\": 0,\n  \"lowerThreshold\": {\n    \"value\": 10000,\n    \"currency\": \"EUR\"\n  }\n}\n```",
+        "operationId" : "postBudgetNotification",
+        "consumes" : [ "application/json" ],
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "targetId",
+          "in" : "path",
+          "description" : "The **targetId** for which to create the notification",
+          "required" : true,
+          "type" : "integer",
+          "format" : "int64"
+        }, {
+          "in" : "body",
+          "name" : "notificationDto",
+          "description" : "The budget change notification to create",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/definitions/BudgetNotification",
+            "example" : {
+              "type" : "BudgetNotification",
+              "accountId" : 123,
+              "lowerThreshold" : {
+                "value" : 10000,
+                "currency" : "EUR"
+              }
+            }
+          },
+          "x-examples" : {
+            "application/json" : "{\"type\":\"BudgetNotification\",\"accountId\":123,\"lowerThreshold\":{\"value\":10000,\"currency\":\"EUR\"}}"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "success",
+            "schema" : {
+              "$ref" : "#/definitions/BudgetNotification"
+            }
+          },
+          "201" : {
+            "description" : "Created"
+          },
+          "400" : {
+            "description" : "Bad Request - List of MessageDto with details on this error"
+          },
+          "500" : {
+            "description" : "Internal server error"
+          },
+          "403" : {
+            "description" : "Not Authenticated"
+          },
+          "503" : {
+            "description" : "Service unavailable - Maintenance mode active"
+          }
+        },
+        "security" : [ {
+          "apiKey" : [ ]
+        } ]
+      }
+    },
+    "/v2/notificationtargets/{targetId}/notifications/dailysummarynotification" : {
+      "post" : {
+        "tags" : [ "Notification" ],
+        "summary" : "Create a daily summary notification",
+        "description" : "Receive a notification for your account status on the configured days and at the configured time. Please make sure to pass your timezone or adjust for UTC. \n\n This example notifies you every day at 12:03 UTC \n\n ```json\n{\n  \"type\": \"DailySummaryNotification\",\n  \"accountId\": 0,\n  \"daysOfWeek\": [\n    'MONDAY', 'TUESDAY', 'WEDNESDAY', \n    'THURSDAY', 'FRIDAY', 'SATURDAY', \n    'SUNDAY'\n  ],\n  \"timeOfDay\": \"12:03Z\"\n}\n```",
+        "operationId" : "postDailySummaryNotification",
+        "consumes" : [ "application/json" ],
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "targetId",
+          "in" : "path",
+          "description" : "The **targetId** for which to create the notification",
+          "required" : true,
+          "type" : "integer",
+          "format" : "int64"
+        }, {
+          "in" : "body",
+          "name" : "notificationDto",
+          "description" : "The daily summary notification to create",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/definitions/DailySummaryNotification",
+            "example" : {
+              "type" : "DailySummaryNotification",
+              "accountId" : 123,
+              "daysOfWeek" : [ "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY" ],
+              "timeOfDay" : "12:03Z"
+            }
+          },
+          "x-examples" : {
+            "application/json" : "{\"type\":\"DailySummaryNotification\",\"accountId\":123,\"daysOfWeek\":[\"MONDAY\",\"TUESDAY\",\"WEDNESDAY\",\"THURSDAY\",\"FRIDAY\",\"SATURDAY\",\"SUNDAY\"],\"timeOfDay\":\"12:03Z\"}"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "success",
+            "schema" : {
+              "$ref" : "#/definitions/DailySummaryNotification"
+            }
+          },
+          "201" : {
+            "description" : "Created"
+          },
+          "400" : {
+            "description" : "Bad Request - List of MessageDto with details on this error"
+          },
+          "500" : {
+            "description" : "Internal server error"
+          },
+          "403" : {
+            "description" : "Not Authenticated"
+          },
+          "503" : {
+            "description" : "Service unavailable - Maintenance mode active"
+          }
+        },
+        "security" : [ {
+          "apiKey" : [ ]
+        } ]
+      }
+    },
+    "/v2/notificationtargets/{targetId}/notifications/newtransactionnotification" : {
+      "post" : {
+        "tags" : [ "Notification" ],
+        "summary" : "Create a new transaction notification",
+        "description" : "Receive a notification for every new transaction, for transactions within a given threshold or that match a **searchKeyword**. To receive all transactions, simply leave the optional fields blank. \n\n  This example notifies you of every transaction that contains the keyword \"food\" between 20 &euro; and 60 &euro;: \n\n ```json\n{\n  \"type\": \"NewTransactionNotification\",\n  \"accountId\": 0,\n  \"lowerThreshold\": {\n    \"value\": 2000,\n    \"currency\": \"EUR\"\n  },\n  \"upperThreshold\": {\n    \"value\": 6000,\n    \"currency\": \"EUR\"\n  },\n  \"searchKeyword\": \"Rent\"\n}\n```",
+        "operationId" : "postNewTransactionNotification",
+        "consumes" : [ "application/json" ],
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "targetId",
+          "in" : "path",
+          "description" : "The **targetId** for which to create the notification",
+          "required" : true,
+          "type" : "integer",
+          "format" : "int64"
+        }, {
+          "in" : "body",
+          "name" : "notificationDto",
+          "description" : "The new transaction notification to create",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/definitions/NewTransactionNotification",
+            "example" : {
+              "type" : "NewTransactionNotification",
+              "accountId" : 123,
+              "lowerThreshold" : {
+                "value" : 2000,
+                "currency" : "EUR"
+              },
+              "upperThreshold" : {
+                "value" : 6000,
+                "currency" : "EUR"
+              },
+              "searchKeyword" : "Rent"
+            }
+          },
+          "x-examples" : {
+            "application/json" : "{\"type\":\"NewTransactionNotification\",\"accountId\":123,\"lowerThreshold\":{\"value\":2000,\"currency\":\"EUR\"},\"upperThreshold\":{\"value\":6000,\"currency\":\"EUR\"},\"searchKeyword\":\"Rent\"}"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "success",
+            "schema" : {
+              "$ref" : "#/definitions/NewTransactionNotification"
+            }
+          },
+          "201" : {
+            "description" : "Created"
+          },
+          "400" : {
+            "description" : "Bad Request - List of MessageDto with details on this error"
+          },
+          "500" : {
+            "description" : "Internal server error"
+          },
+          "403" : {
+            "description" : "Not Authenticated"
+          },
+          "503" : {
+            "description" : "Service unavailable - Maintenance mode active"
+          }
+        },
+        "security" : [ {
+          "apiKey" : [ ]
+        } ]
+      }
+    },
+    "/v2/notificationtargets/{targetId}/notifications/{notificationId}" : {
+      "get" : {
+        "tags" : [ "Notification" ],
+        "summary" : "Get notification ",
+        "description" : "Retrieve notification identified by **notificationId**.",
+        "operationId" : "getNotification",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "targetId",
+          "in" : "path",
+          "description" : "The **targetId** for which to retrieve the notification",
+          "required" : true,
+          "type" : "integer",
+          "format" : "int64"
+        }, {
+          "name" : "notificationId",
+          "in" : "path",
+          "description" : "The *notificationId* to retrieve",
+          "required" : true,
+          "type" : "integer",
+          "format" : "int64"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "success",
+            "schema" : {
+              "$ref" : "#/definitions/Notification"
+            }
+          },
+          "400" : {
+            "description" : "Bad Request - List of MessageDto with details on this error"
+          },
+          "500" : {
+            "description" : "Internal server error"
+          },
+          "403" : {
+            "description" : "Not Authenticated"
+          },
+          "404" : {
+            "description" : "Notification Not Found"
+          },
+          "503" : {
+            "description" : "Service unavailable - Maintenance mode active"
+          }
+        },
+        "security" : [ {
+          "apiKey" : [ ]
+        } ]
+      },
+      "put" : {
+        "tags" : [ "Notification" ],
+        "summary" : "Update notification",
+        "description" : "Update the notification identified by **notificationId**. The **notificationId** must match the **id** in **notificationDto**. Please note that type depending restrictions from creating a notification also apply here.",
+        "operationId" : "putNotification",
+        "consumes" : [ "application/json" ],
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "targetId",
+          "in" : "path",
+          "description" : "The **targetId** for which to create the notification",
+          "required" : true,
+          "type" : "integer",
+          "format" : "int64"
+        }, {
+          "name" : "notificationId",
+          "in" : "path",
+          "description" : "The **notificationId** to update",
+          "required" : true,
+          "type" : "integer",
+          "format" : "int64"
+        }, {
+          "in" : "body",
+          "name" : "notificationDto",
+          "description" : "The notification data to update",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/definitions/Notification"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "success",
+            "schema" : {
+              "$ref" : "#/definitions/Notification"
+            }
+          },
+          "400" : {
+            "description" : "Bad Request - List of MessageDto with details on this error"
+          },
+          "500" : {
+            "description" : "Internal server error"
+          },
+          "403" : {
+            "description" : "Not Authenticated"
+          },
+          "503" : {
+            "description" : "Service unavailable - Maintenance mode active"
+          }
+        },
+        "security" : [ {
+          "apiKey" : [ ]
+        } ]
+      },
+      "delete" : {
+        "tags" : [ "Notification" ],
+        "summary" : "Delete notification",
+        "description" : "Delete notification identified by **notificationId**.",
+        "operationId" : "deleteNotification",
+        "parameters" : [ {
+          "name" : "targetId",
+          "in" : "path",
+          "description" : "The **targetId** for which to delete the notification",
+          "required" : true,
+          "type" : "integer",
+          "format" : "int64"
+        }, {
+          "name" : "notificationId",
+          "in" : "path",
+          "description" : "The **notificationId** to delete",
+          "required" : true,
+          "type" : "integer",
+          "format" : "int64"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "success"
+          },
+          "400" : {
+            "description" : "Bad Request - List of MessageDto with details on this error"
+          },
+          "500" : {
+            "description" : "Internal server error"
+          },
+          "204" : {
+            "description" : "No Content - Notification was deleted"
+          },
+          "403" : {
+            "description" : "Not Authenticated"
+          },
+          "404" : {
+            "description" : "Notification Not Found"
+          },
+          "503" : {
+            "description" : "Service unavailable - Maintenance mode active"
+          }
+        },
+        "security" : [ {
+          "apiKey" : [ ]
+        } ]
+      }
+    },
+    "/v2/providers" : {
+      "get" : {
+        "tags" : [ "Provider" ],
+        "summary" : "List bank providers",
+        "description" : "Retrieve a list of bank providers. A provider-**id** is necessary to create an _access_. To retrieve the necessary access fields, you need to query the specific `provider/{providerId}`. For performance reasons they are kept separate. ",
+        "operationId" : "getProviders",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "bankCode",
+          "in" : "query",
+          "description" : "Optional &mdash; if length = 8, the response will also contain data describing\n            the fields required for account setup",
+          "required" : false,
+          "type" : "string"
+        }, {
+          "name" : "supported",
+          "in" : "query",
+          "description" : "Optional &mdash; response should only contain providers supported for account\n            setup via this API",
+          "required" : false,
+          "type" : "boolean"
+        }, {
+          "name" : "query",
+          "in" : "query",
+          "description" : "Optional &mdash; search parameters for BankCode, BIC, Location, Name. Will be ignored\n            if the bankCode query parameter is set.",
+          "required" : false,
+          "type" : "string"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "success",
+            "schema" : {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/definitions/Provider"
+              }
+            }
+          },
+          "500" : {
+            "description" : "internal error"
+          },
+          "403" : {
+            "description" : "client not allowed to use this service"
+          },
+          "503" : {
+            "description" : "Service unavailable - Maintenance mode active"
+          }
+        },
+        "security" : [ {
+          "apiKey" : [ ]
+        } ]
+      }
+    },
+    "/v2/providers/{providerId}" : {
+      "get" : {
+        "tags" : [ "Provider" ],
+        "summary" : "Get provider",
+        "description" : "Retrieve a single provider identified by **providerId**.",
+        "operationId" : "getProvider",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "providerId",
+          "in" : "path",
+          "description" : "The **providerId** to retrieve",
+          "required" : true,
+          "type" : "integer",
+          "format" : "int64"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "success",
+            "schema" : {
+              "$ref" : "#/definitions/Provider"
+            }
+          },
+          "400" : {
+            "description" : "Bad Request - List of MessageDto with details on this error"
+          },
+          "500" : {
+            "description" : "Internal server error"
+          },
+          "403" : {
+            "description" : "Not Authenticated"
+          },
+          "503" : {
+            "description" : "Service unavailable - Maintenance mode active"
+          }
+        },
+        "security" : [ {
+          "apiKey" : [ ]
+        } ]
+      }
+    }
+  },
+  "securityDefinitions" : {
+    "apiKey" : {
+      "type" : "apiKey",
+      "name" : "X-SF-AHOI-TEST-Principal",
+      "in" : "header"
+    }
+  },
+  "definitions" : {
+    "Account" : {
+      "required" : [ "automaticRefresh", "id", "kind", "name", "owner", "providerId", "type" ],
+      "discriminator" : "type",
+      "properties" : {
+        "id" : {
+          "type" : "integer",
+          "format" : "int64",
+          "description" : "Internal ID of this account (generated value)"
+        },
+        "name" : {
+          "type" : "string",
+          "description" : "Account name returned by bank provider (e.g., \"Giro Account\")"
+        },
+        "userDefinedName" : {
+          "type" : "string",
+          "description" : "Account userDefinedName. This value can be set to define a custom name used in AHOI (e.g., \"My Giro Account\").\n Can be changed by using the account resource."
+        },
+        "owner" : {
+          "type" : "string",
+          "description" : "Account owner returned by bank provider (e.g., \"Max Mustermann\")"
+        },
+        "providerId" : {
+          "type" : "integer",
+          "format" : "int64",
+          "description" : "Identifier of the provider to which this account belongs"
+        },
+        "kind" : {
+          "type" : "string",
+          "description" : "An account kind is a classification of its structure and its possibilities. \n This is typically defined by the bank provider.",
+          "enum" : [ "GIRO", "SPAR", "FESTGELD", "DEPOT", "DARLEHEN", "KREDITKARTE", "BAUSPAR", "VL_SPAR", "VL_BAUSPAR", "VL_WERTPAPIERSPARVERTRAG" ]
+        },
+        "automaticRefresh" : {
+          "type" : "boolean",
+          "description" : "Flag to determine whether this account is automatically refreshed on the server side. \n Requires that the corresponding access has its PIN saved.\n Can be updated by using the account resource.\n\n Default is `false`."
+        },
+        "type" : {
+          "type" : "string",
+          "description" : "Discriminator for subtypes. At the moment only `BankAccount` is supported."
+        }
+      },
+      "example" : {
+        "id" : 123,
+        "name" : "Checking Account",
+        "userDefinedName" : "My Checking Account",
+        "owner" : "Max Mustermann",
+        "providerId" : 0,
+        "kind" : "GIRO",
+        "automaticRefresh" : true,
+        "type" : "BankAccount",
+        "number" : "0317899806",
+        "bankCodeNumber" : "99994000",
+        "bic" : "TESTBIC",
+        "iban" : "DE00999940000317899806",
+        "currency" : "EUR",
+        "balance" : {
+          "amount" : {
+            "value" : 133723,
+            "currency" : "EUR"
+          },
+          "date" : "2016-10-24T13:37:00+02:00"
+        }
+      }
+    },
+    "BankAccess" : {
+      "allOf" : [ {
+        "$ref" : "#/definitions/Access"
+      } ]
+    },
+    "Access" : {
+      "required" : [ "accessFields", "providerId", "type" ],
+      "discriminator" : "type",
+      "properties" : {
+        "id" : {
+          "type" : "integer",
+          "format" : "int64",
+          "description" : "Internal ID of this access (generated value)"
+        },
+        "providerId" : {
+          "type" : "integer",
+          "format" : "int64",
+          "description" : "Identifier of the provider to which this access belongs"
+        },
+        "accessFields" : {
+          "description" : "Authentication data for the given provider as map of InputFieldId to String (e.g., `{\"USERNAME\", \"yourName\"}`)\n The fields necessary for the access are determined by the \n InputField descriptions of the related provider.",
+          "$ref" : "#/definitions/AccessFieldsMap"
+        },
+        "validationState" : {
+          "type" : "string",
+          "description" : "The state reflects the validity of the access credentials. The state can change after communicating with the provider.\n It can be OK (access credentials are valid); `ACCESS_LOCKED` (access is locked: This can happen when, for example, someone tried to login to your account by\n using an incorrect PIN too many times or if your account was used for illegal purposes &mdash; automatic refresh will be disabled); or `ACCESS_WRONG` (access wrong: Saved\n credentials are incorrect and no communication with the provider is possible &mdash; automatic refresh will be disabled)",
+          "enum" : [ "OK", "ACCESS_LOCKED", "ACCESS_WRONG" ]
+        },
+        "type" : {
+          "type" : "string",
+          "description" : "Discriminator for subtypes. At the moment only `BankAccess` is supported."
+        }
+      },
+      "example" : {
+        "id" : 0,
+        "providerId" : 0,
+        "validationStatus" : "OK",
+        "type" : "BankAccess",
+        "accessFields" : {
+          "CUSTOMERNUMBER" : "<customernumber>",
+          "USERNAME" : "<username>",
+          "PIN" : "<pin>"
+        }
+      }
+    },
+    "NotificationTarget" : {
+      "required" : [ "appToken", "locale", "operatingSystem", "productId" ],
+      "properties" : {
+        "id" : {
+          "type" : "integer",
+          "format" : "int64",
+          "description" : "Internal ID of this notificationTarget (generated value)"
+        },
+        "appToken" : {
+          "type" : "string",
+          "description" : "Installation of specific application token to which to send push notifications. (e.g., device token on iOS devices)"
+        },
+        "productId" : {
+          "type" : "string",
+          "description" : "ID of the application. Has to be set up in AHOI. Use \"sandbox-product\" in sandbox environment."
+        },
+        "operatingSystem" : {
+          "type" : "string",
+          "description" : "Operating system of the application",
+          "enum" : [ "IOS", "ANDROID" ]
+        },
+        "state" : {
+          "type" : "string",
+          "description" : "State of the application",
+          "enum" : [ "OK", "UNDEFINED", "TARGET_UNKNOWN", "INVALID_TOKEN_FORMAT" ]
+        },
+        "locale" : {
+          "type" : "string",
+          "description" : "Locale used to determine notification titles and texts for this target. \n Defaults to 'de_DE'."
+        }
+      },
+      "example" : {
+        "id" : 0,
+        "appToken" : "EXAMPLEZFTGHUIOHUGZFTRFZGHUIJBGFCTT5675KNBJHGVCFGHKLNKBNMBVGEXAMPLE",
+        "productId" : "sandbox-product",
+        "operatingSystem" : "ANDROID",
+        "state" : "OK",
+        "locale" : "de_DE"
+      }
+    },
+    "BalanceChangeNotification" : {
+      "allOf" : [ {
+        "$ref" : "#/definitions/Notification"
+      }, {
+        "required" : [ "accountId" ],
+        "properties" : {
+          "accountId" : {
+            "type" : "integer",
+            "format" : "int64",
+            "description" : "Identifier of the account to which this notification belongs."
+          },
+          "lowerThreshold" : {
+            "description" : "Optional limitation; lower threshold of the amount (negative values allowed) above which notifications will be sent",
+            "$ref" : "#/definitions/Amount"
+          },
+          "upperThreshold" : {
+            "description" : "Optional limitation; upper threshold of the amount (negative values allowed) below which notifications will be sent",
+            "$ref" : "#/definitions/Amount"
+          }
+        }
+      } ],
+      "example" : {
+        "id" : 0,
+        "type" : "BalanceChangeNotification",
+        "accountId" : 123,
+        "lowerThreshold" : {
+          "value" : 10000,
+          "currency" : "EUR"
+        }
+      }
+    },
+    "Notification" : {
+      "required" : [ "type" ],
+      "discriminator" : "type",
+      "properties" : {
+        "id" : {
+          "type" : "integer",
+          "format" : "int64",
+          "description" : "Internal ID of this notification (generated value)"
+        },
+        "type" : {
+          "type" : "string",
+          "description" : "Discriminator for subtypes. At the moment `BalanceChangeNotification`, `BudgetNotification`, `DailySummaryNotification` and `NewTransactionNotification` are supported."
+        }
+      },
+      "example" : {
+        "id" : 0,
+        "type" : "NewTransactionNotification",
+        "accountId" : 123,
+        "searchKeyword" : "<keyword>",
+        "upperThreshold" : {
+          "value" : 10000,
+          "currency" : "EUR"
+        },
+        "lowerThreshold" : {
+          "value" : 10000,
+          "currency" : "EUR"
+        }
+      }
+    },
+    "BudgetNotification" : {
+      "allOf" : [ {
+        "$ref" : "#/definitions/Notification"
+      }, {
+        "required" : [ "accountId" ],
+        "properties" : {
+          "accountId" : {
+            "type" : "integer",
+            "format" : "int64",
+            "description" : "Identifier of the account to which this notification belongs"
+          },
+          "lowerThreshold" : {
+            "description" : "Optional limitation; lower threshold of the amount (negative values allowed) above which notifications will be sent",
+            "$ref" : "#/definitions/Amount"
+          },
+          "upperThreshold" : {
+            "description" : "Optional limitation; upper threshold of the amount (negative values allowed) below which notifications will be sent",
+            "$ref" : "#/definitions/Amount"
+          }
+        }
+      } ],
+      "example" : {
+        "id" : 0,
+        "type" : "BudgetNotification",
+        "accountId" : 123,
+        "lowerThreshold" : {
+          "value" : 10000,
+          "currency" : "EUR"
+        }
+      }
+    },
+    "TransferChallenge" : {
+      "required" : [ "challenge", "responseObjects" ],
+      "properties" : {
+        "transferTaskId" : {
+          "type" : "integer",
+          "format" : "int64",
+          "description" : "TranferTaskID - The referenced task for that payment &mdash; challenge"
+        },
+        "fieldDescriptions" : {
+          "type" : "array",
+          "description" : "Information to describe and facilitate validation of an transfer.",
+          "items" : {
+            "$ref" : "#/definitions/InputFieldDescription"
+          }
+        },
+        "challenge" : {
+          "type" : "string",
+          "description" : "Challenge &mdash; challenge text"
+        },
+        "responseObjects" : {
+          "description" : "FieldSet &mdash; The required InputFields for that challenge",
+          "$ref" : "#/definitions/ResponseObjectMap"
+        }
+      },
+      "example" : {
+        "transferTaskId" : 4,
+        "fieldSet" : [ {
+          "id" : "TAN",
+          "label" : "TAN",
+          "masked" : true,
+          "format" : "DEFINITELYNUMERIC",
+          "lengthMin" : 6,
+          "lengthMax" : 6
+        } ],
+        "challenge" : "Bitte geben Sie Ihre TAN ein!",
+        "responseObjects" : {
+          "TAN" : "<TAN>"
+        }
+      }
+    },
+    "AccessFieldsMap" : {
+      "properties" : {
+        "USERNAME" : {
+          "type" : "string",
+          "description" : "Should be filled with the username if the Provider object signals this as mandatory."
+        },
+        "CUSTOMERNUMBER" : {
+          "type" : "string",
+          "description" : "Should be filled with the customer number if the Provider object signals this as mandatory."
+        },
+        "PIN" : {
+          "type" : "string",
+          "format" : "password",
+          "description" : "Should be filled with the PIN if the Provider object signals this as mandatory."
+        }
+      }
+    },
+    "TransferChallengeResponse" : {
+      "required" : [ "responseObjects" ],
+      "properties" : {
+        "transferTaskId" : {
+          "type" : "integer",
+          "format" : "int64",
+          "description" : "TransferTaskID &mdash; The referenced task for that payment challenge"
+        },
+        "responseObjects" : {
+          "description" : "FieldSet &mdash; The required InputFields for that challenge",
+          "$ref" : "#/definitions/ResponseObjectMap"
+        }
+      },
+      "example" : {
+        "transferTaskId" : 4,
+        "responseObjects" : {
+          "TAN" : "<TAN>"
+        }
+      }
+    },
+    "GiroTransaction" : {
+      "allOf" : [ {
+        "$ref" : "#/definitions/Transaction"
+      }, {
+        "required" : [ "amount", "bookingDate", "creditor", "debtor", "prebooked", "purpose", "valueDate" ],
+        "properties" : {
+          "amount" : {
+            "description" : "Amount value",
+            "$ref" : "#/definitions/Amount"
+          },
+          "bookingDate" : {
+            "type" : "string",
+            "format" : "date-time",
+            "description" : "Booking date (ISO 8601: \"yyyy-MM-dd'T'HH:mm:ssX\")"
+          },
+          "valueDate" : {
+            "type" : "string",
+            "format" : "date-time",
+            "description" : "Value Date (ISO 8601: \"yyyy-MM-dd'T'HH:mm:ssX\")"
+          },
+          "creditor" : {
+            "type" : "string",
+            "description" : "Creditor's name"
+          },
+          "creditorBankCode" : {
+            "type" : "string",
+            "description" : "Creditor's bank code or BIC"
+          },
+          "creditorAccountNumber" : {
+            "type" : "string",
+            "description" : "Creditor's account number or IBAN"
+          },
+          "debtor" : {
+            "type" : "string",
+            "description" : "Debtor's name"
+          },
+          "debtorBankCode" : {
+            "type" : "string",
+            "description" : "Debtor's bank code or BIC"
+          },
+          "debtorAccountNumber" : {
+            "type" : "string",
+            "description" : "Debtor's account number or IBAN"
+          },
+          "purpose" : {
+            "type" : "string",
+            "description" : "Purpose (as given by the provider)"
+          },
+          "cleanPurpose" : {
+            "type" : "string",
+            "description" : "Cleaned purpose. Some SEPA information is filtered out (e.g., \"KREF+-1434947533-2...\")"
+          },
+          "prebooked" : {
+            "type" : "boolean",
+            "description" : "Flag to identify if the transaction is marked as pre-booked"
+          }
+        }
+      } ]
+    },
+    "TanMedia" : {
+      "required" : [ "description", "id", "name" ],
+      "properties" : {
+        "id" : {
+          "type" : "integer",
+          "format" : "int64",
+          "description" : "Internal ID of this TanMedia (generated value)"
+        },
+        "name" : {
+          "type" : "string",
+          "description" : "Name of TANMedia (e.g., \"iTan\")"
+        },
+        "description" : {
+          "type" : "string",
+          "description" : "Description of TANMedia (e.g., phone number or card number used for given type)"
+        }
+      }
+    },
+    "MonthlySummary" : {
+      "required" : [ "accountId", "balance", "id", "income", "month", "outgoings" ],
+      "properties" : {
+        "id" : {
+          "type" : "integer",
+          "format" : "int64",
+          "description" : "Internal ID of this monthlySummary (generated value)"
+        },
+        "month" : {
+          "type" : "string",
+          "description" : "The month to which this entry belongs (year-month in ISO-8601: \"yyyy-MM\")"
+        },
+        "accountId" : {
+          "type" : "integer",
+          "format" : "int64",
+          "description" : "ID of account to which this entry belongs"
+        },
+        "income" : {
+          "description" : "Sum of all incoming transactions for this month",
+          "$ref" : "#/definitions/Amount"
+        },
+        "outgoings" : {
+          "description" : "Sum of all outgoing transactions for this month",
+          "$ref" : "#/definitions/Amount"
+        },
+        "balance" : {
+          "description" : "Balance at end of month",
+          "$ref" : "#/definitions/Amount"
+        }
+      },
+      "example" : {
+        "id" : 0,
+        "month" : "2016-08",
+        "accountId" : 0,
+        "income" : {
+          "value" : 133700,
+          "currency" : "EUR"
+        },
+        "outgoings" : {
+          "value" : 4200,
+          "currency" : "EUR"
+        },
+        "balance" : {
+          "value" : 1295,
+          "currency" : "EUR"
+        }
+      }
+    },
+    "Amount" : {
+      "required" : [ "currency", "value" ],
+      "properties" : {
+        "value" : {
+          "type" : "integer",
+          "format" : "int64",
+          "description" : "Amount value (in smallest unit; e.g., euro cents)"
+        },
+        "currency" : {
+          "type" : "string",
+          "description" : "Amount currency (ISO-4217; e.g., \"EUR\")"
+        }
+      }
+    },
+    "InputFieldDescription" : {
+      "required" : [ "format", "id", "label", "masked" ],
+      "properties" : {
+        "id" : {
+          "type" : "string",
+          "description" : "Internal ID for this field description",
+          "enum" : [ "USERNAME", "CUSTOMERNUMBER", "PIN", "TAN" ]
+        },
+        "label" : {
+          "type" : "string",
+          "description" : "Label for this field description (e.g., 'PIN', 'Login name', 'Customer No.')"
+        },
+        "masked" : {
+          "type" : "boolean",
+          "description" : "Flag that indicates whether the given field value must be masked when entered on client side or encrypted when persisted\n on the server side"
+        },
+        "format" : {
+          "type" : "string",
+          "description" : "Format of field value\n Can be `DEFINITELYNUMERIC` (format is definitely numeric), `DEFINITELYALPHANUMERIC` (format is definitely alphanumeric),\n `PROBABLYALPHANUMERIC` (format is probably alphanumeric; numeric is unlikely but possible), `PROBABLYNUMERIC` (format is probably\n numeric; alphanumeric is unlikely but possible) or `UNSPECIFIED` (default, no hint available)",
+          "enum" : [ "UNSPECIFIED", "PROBABLYNUMERIC", "DEFINITELYNUMERIC", "PROBABLYALPHANUMERIC", "DEFINITELYALPHANUMERIC" ]
+        },
+        "lengthMin" : {
+          "type" : "integer",
+          "format" : "int32",
+          "description" : "Minimum length of field value (0 = no limit)"
+        },
+        "lengthMax" : {
+          "type" : "integer",
+          "format" : "int32",
+          "description" : "Maximum length of field value (0 = no limit)"
+        }
+      }
+    },
+    "BankAccount" : {
+      "allOf" : [ {
+        "$ref" : "#/definitions/Account"
+      }, {
+        "required" : [ "bankCodeNumber", "bic", "currency", "iban", "number" ],
+        "properties" : {
+          "number" : {
+            "type" : "string",
+            "description" : "Account number (national)"
+          },
+          "bankCodeNumber" : {
+            "type" : "string",
+            "description" : "Bank code number (BLZ, national, 8 digits)"
+          },
+          "bic" : {
+            "type" : "string",
+            "description" : "Business Identifier Code (BIC; ISO 9362)"
+          },
+          "iban" : {
+            "type" : "string",
+            "description" : "International Bank Account Number (IBAN; ISO 13616-1)"
+          },
+          "currency" : {
+            "type" : "string",
+            "description" : "Account currency (ISO 4217) (e.g., \"EUR\")"
+          },
+          "balance" : {
+            "description" : "Current balance. This value is set whenever the account is refreshed.",
+            "$ref" : "#/definitions/Balance"
+          }
+        }
+      } ]
+    },
+    "ResponseObjectMap" : {
+      "type" : "object",
+      "properties" : {
+        "USERNAME" : {
+          "type" : "string",
+          "description" : "The username for the authorization."
+        },
+        "CUSTOMERNUMBER" : {
+          "type" : "string",
+          "description" : "The username for the authorization."
+        },
+        "PIN" : {
+          "type" : "string",
+          "format" : "password",
+          "description" : "The PIN for the authorization"
+        },
+        "TAN" : {
+          "type" : "string",
+          "format" : "password",
+          "description" : "The TAN for the authorization."
+        }
+      }
+    },
+    "NewTransactionNotification" : {
+      "allOf" : [ {
+        "$ref" : "#/definitions/Notification"
+      }, {
+        "required" : [ "accountId" ],
+        "properties" : {
+          "accountId" : {
+            "type" : "integer",
+            "format" : "int64",
+            "description" : "Identifier of the account to which this notification belongs"
+          },
+          "lowerThreshold" : {
+            "description" : "Optional limitation; lower threshold of the amount (negative values allowed) above which notifications will be sent",
+            "$ref" : "#/definitions/Amount"
+          },
+          "upperThreshold" : {
+            "description" : "Optional limitation; upper threshold of the amount (negative values allowed) below which notifications will be sent",
+            "$ref" : "#/definitions/Amount"
+          },
+          "searchKeyword" : {
+            "type" : "string",
+            "description" : "Optional limitation on transactions for given keywords (e.g., owner \"Hans Muster\" or purpose \"Salary\")"
+          }
+        }
+      } ],
+      "example" : {
+        "id" : 0,
+        "type" : "NewTransactionNotification",
+        "accountId" : 123,
+        "lowerThreshold" : {
+          "value" : 2000,
+          "currency" : "EUR"
+        },
+        "upperThreshold" : {
+          "value" : 6000,
+          "currency" : "EUR"
+        },
+        "searchKeyword" : "Rent"
+      }
+    },
+    "Provider" : {
+      "required" : [ "id", "location", "name", "supported", "type" ],
+      "discriminator" : "type",
+      "properties" : {
+        "id" : {
+          "type" : "integer",
+          "format" : "int64",
+          "description" : "Internal ID of this provider. A constant to identify provider even when,\n for examplr, their bank code changes (provided type is BankProvider)"
+        },
+        "name" : {
+          "type" : "string",
+          "description" : "Name of this provider (e.g., \"Hamburger Bank\")"
+        },
+        "location" : {
+          "type" : "string",
+          "description" : "Location of this provider (e.g., \"Hamburg\")"
+        },
+        "accessDescription" : {
+          "description" : "Description of the access for the account setup (e.g., UI input fields)",
+          "$ref" : "#/definitions/AccessDescription"
+        },
+        "supported" : {
+          "type" : "boolean",
+          "description" : "Whether this bank is supported by the AHOI API (i.e., whether you can establish a connection to this provider)."
+        },
+        "type" : {
+          "type" : "string",
+          "description" : "Discriminator for subtypes. At the moment only `BankProvider` is supported."
+        }
+      },
+      "example" : {
+        "type" : "BankProvider",
+        "id" : 4158,
+        "name" : "Sandbox",
+        "location" : "Hamburg",
+        "accessDescription" : {
+          "infoText" : "Sofern Ihr Institut Ihnen keine separate Benutzerkennung mitgeteilt hat, geben Sie bitte unter Benutzerkennung Ihre Kontonummer ein. In Abhängigkeit von Ihrem Kreditinstitut können zusätzliche Informationen, wie beispielsweise eine Kundennummer, hinterlegt werden. Diese Eingabe ist meistens optional.",
+          "fieldDescriptions" : [ {
+            "id" : "USERNAME",
+            "label" : "Benutzerkennung",
+            "masked" : false,
+            "format" : "DEFINITELYALPHANUMERIC",
+            "lengthMin" : 0,
+            "lengthMax" : 0
+          }, {
+            "id" : "PIN",
+            "label" : "PIN",
+            "masked" : true,
+            "format" : "UNSPECIFIED",
+            "lengthMin" : 5,
+            "lengthMax" : 5
+          } ]
+        },
+        "supported" : true,
+        "bankCode" : "99994000"
+      }
+    },
+    "DailySummaryNotification" : {
+      "allOf" : [ {
+        "$ref" : "#/definitions/Notification"
+      }, {
+        "required" : [ "accountId", "daysOfWeek", "timeOfDay" ],
+        "properties" : {
+          "accountId" : {
+            "type" : "integer",
+            "format" : "int64",
+            "description" : "Identifier of the account to which this notification belongs"
+          },
+          "timeOfDay" : {
+            "type" : "string",
+            "description" : "Time of the day when this notification should be triggered. Must be in the desired timezone or normalized to UTC. (ISO-8601; e.g.,\n \"13:45.30.123456789+02:00\")"
+          },
+          "daysOfWeek" : {
+            "type" : "array",
+            "description" : "The days of the week on which these notification should be triggered. All entries must be unique.\n\nCan be `MONDAY`, `TUESDAY`, `WEDNESDAY`, `THURSDAY`, `FRIDAY`, `SATURDAY` or `SUNDAY`",
+            "uniqueItems" : true,
+            "items" : {
+              "type" : "string",
+              "enum" : [ "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY" ]
+            }
+          }
+        }
+      } ],
+      "example" : {
+        "id" : 0,
+        "type" : "DailySummaryNotification",
+        "accountId" : 123,
+        "daysOfWeek" : [ "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY" ],
+        "timeOfDay" : "12:03Z"
+      }
+    },
+    "Transaction" : {
+      "required" : [ "id", "type" ],
+      "discriminator" : "type",
+      "properties" : {
+        "transactionPatternId" : {
+          "type" : "integer",
+          "format" : "int64",
+          "description" : "Identifier of the transactionPattern to which this transaction belongs"
+        },
+        "id" : {
+          "type" : "integer",
+          "format" : "int64",
+          "description" : "Internal ID of this transaction (generated value)"
+        },
+        "type" : {
+          "type" : "string",
+          "description" : "Discriminator for subtypes. At the moment only `GiroTransaction` is supported."
+        }
+      },
+      "example" : {
+        "id" : 0,
+        "type" : "GiroTransaction",
+        "transactionPatternId" : 0,
+        "amount" : {
+          "value" : 25000,
+          "currency" : "EUR"
+        },
+        "bookingDate" : "2016-05-23T12:00:00+02:00",
+        "valueDate" : "2016-05-23T12:00:00+02:00",
+        "creditor" : "Leasing Cars GmbH",
+        "creditorAccountNumber" : "DE00999940000317800001",
+        "creditorBankCode" : "99994000",
+        "debtor" : "Stan S. Stanman",
+        "debtorAccountNumber" : "DE00999940000317899806",
+        "debtorBankCode" : "99994000",
+        "purpose" : "Auto",
+        "cleanPurpose" : "leasing fee",
+        "bookingKey" : "0---m"
+      }
+    },
+    "AccessDescription" : {
+      "properties" : {
+        "infoText" : {
+          "type" : "string",
+          "description" : "Information text by the provider as a description for required user actions during the account setup (e.g., \n \"Provided your financial institution has not given you a separate username, please enter\n your account number as your username. Depending on your financial institution,\n additional information such as a customer number can be entered. Most of the time\n entering this information is optional.\")"
+        },
+        "fieldDescriptions" : {
+          "type" : "array",
+          "description" : "Information to describe and facilitate validation of an access.",
+          "items" : {
+            "$ref" : "#/definitions/InputFieldDescription"
+          }
+        }
+      }
+    },
+    "BankProvider" : {
+      "allOf" : [ {
+        "$ref" : "#/definitions/Provider"
+      }, {
+        "required" : [ "bankCode", "bic" ],
+        "properties" : {
+          "bankCode" : {
+            "type" : "string",
+            "description" : "Bank code number (BLZ, national, 8 digits)"
+          },
+          "bic" : {
+            "type" : "string",
+            "description" : "Business Identifier Code (defined in ISO-9362)"
+          }
+        }
+      } ]
+    },
+    "Forecast" : {
+      "required" : [ "accountId", "forecastBalance", "unappliedTransactionPatterns" ],
+      "properties" : {
+        "forecastBalance" : {
+          "description" : "Balance forecast",
+          "$ref" : "#/definitions/Balance"
+        },
+        "accountId" : {
+          "type" : "integer",
+          "format" : "int64",
+          "description" : "ID of account to which this entry belongs"
+        },
+        "unappliedTransactionPatterns" : {
+          "type" : "array",
+          "description" : "List of unapplied transaction patterns",
+          "items" : {
+            "$ref" : "#/definitions/TransactionPattern"
+          }
+        }
+      }
+    },
+    "Transfer" : {
+      "required" : [ "amount", "iban", "name", "tanScheme" ],
+      "properties" : {
+        "iban" : {
+          "type" : "string",
+          "description" : "IBAN - International Bank Account Number (defined in ISO 13616-1)"
+        },
+        "bic" : {
+          "type" : "string",
+          "description" : "BIC - Business Identifier Code (defined in ISO-9362)"
+        },
+        "name" : {
+          "type" : "string",
+          "description" : "Name - Name of the creditor"
+        },
+        "amount" : {
+          "description" : "Amount to be transfered",
+          "$ref" : "#/definitions/Amount"
+        },
+        "purpose" : {
+          "type" : "string",
+          "description" : "Purpose"
+        },
+        "tanMediaId" : {
+          "type" : "integer",
+          "format" : "int64",
+          "description" : "TANMediaId - The identifying ID of the TANMedia."
+        },
+        "tanScheme" : {
+          "type" : "string",
+          "description" : "TANScheme - The scheme \"number\" that is used to verify this payment"
+        }
+      },
+      "example" : {
+        "iban" : "DE00999940000651695227",
+        "bic" : "TESTBICXXX",
+        "name" : "Stan S. Stanman",
+        "amount" : {
+          "value" : 5000,
+          "currency" : "EUR"
+        },
+        "purpose" : "Lease",
+        "tanScheme" : "SMSTAN",
+        "tanMediaId" : 1
+      }
+    },
+    "TransactionPattern" : {
+      "required" : [ "accountNumber", "amount", "bankCode", "cycle", "day", "relatedAccountOwner", "state" ],
+      "properties" : {
+        "id" : {
+          "type" : "integer",
+          "format" : "int64",
+          "description" : "Internal ID of this transactionPattern (generated value)"
+        },
+        "state" : {
+          "type" : "string",
+          "description" : "State of this pattern\n can be `ACTIVE` (default) or `INACTIVE` (user has disabled it)",
+          "enum" : [ "INACTIVE", "ACTIVE" ]
+        },
+        "cycle" : {
+          "type" : "string",
+          "description" : "Frequency of occurrence for this pattern",
+          "enum" : [ "MONTHLY", "QUARTERLY", "SEMI_ANNUALLY", "ANNUALLY" ]
+        },
+        "origin" : {
+          "type" : "string",
+          "description" : "Origin of creation can be `FINDER` (automatically found) or `MANUAL` (created by user). Cannot be set with creation or update.",
+          "enum" : [ "FINDER", "MANUAL" ]
+        },
+        "day" : {
+          "type" : "integer",
+          "format" : "int32",
+          "description" : "Day in the cycle this pattern occurs"
+        },
+        "relatedAccountOwner" : {
+          "type" : "string",
+          "description" : "Name of owner of related account (debtor or creditor)"
+        },
+        "amount" : {
+          "description" : "Amount value",
+          "$ref" : "#/definitions/Amount"
+        },
+        "accountNumber" : {
+          "type" : "string",
+          "description" : "Account number or IBAN of related account (debtor or creditor)"
+        },
+        "bankCode" : {
+          "type" : "string",
+          "description" : "Bank code number or BIC of related account (debtor or creditor)"
+        },
+        "kind" : {
+          "type" : "string",
+          "description" : "Kind of transaction (e.g., \"Lastschrift\" or \"Dauerauftrag\")"
+        }
+      },
+      "example" : {
+        "id" : 0,
+        "state" : "ACTIVE",
+        "cycle" : "ANNUALLY",
+        "day" : 185,
+        "relatedAccountOwner" : "Stan S. Stanman",
+        "amount" : {
+          "value" : 5000,
+          "currency" : "EUR"
+        },
+        "accountNumber" : "DE00999940000317899806",
+        "bankCode" : "99994000",
+        "kind" : "Lastschrift"
+      }
+    },
+    "TanScheme" : {
+      "properties" : {
+        "name" : {
+          "type" : "string",
+          "description" : "Name of the used TAN scheme",
+          "enum" : [ "SMSTAN", "ITAN", "CHIPTAN", "PUSHTAN" ]
+        },
+        "tanMediaList" : {
+          "type" : "array",
+          "description" : "List of available TAN media for this scheme",
+          "items" : {
+            "$ref" : "#/definitions/TanMedia"
+          }
+        }
+      },
+      "example" : {
+        "schemeId" : "default",
+        "name" : "Default TAN scheme",
+        "tanMediaList" : [ {
+          "id" : 2,
+          "name" : "iTan",
+          "mediaClass" : "L",
+          "description" : "iTan with number 1234567890"
+        } ]
+      }
+    },
+    "Balance" : {
+      "required" : [ "amount", "date" ],
+      "properties" : {
+        "amount" : {
+          "description" : "Balance amount",
+          "$ref" : "#/definitions/Amount"
+        },
+        "date" : {
+          "type" : "string",
+          "format" : "date-time",
+          "description" : "Date of balance (ISO 8601: \"yyyy-MM-dd'T'HH:mm:ssX\")"
+        }
+      }
+    }
+  }
+}
