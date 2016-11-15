@@ -7,9 +7,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 
-import com.webcohesion.enunciate.metadata.rs.ResponseCode;
-import com.webcohesion.enunciate.metadata.rs.StatusCodes;
-
 @Controller
 public class AhoiResource {
 
@@ -21,8 +18,6 @@ public class AhoiResource {
 	 * @return String a greeting.
 	 */
 	@RequestMapping(value = "/api/hello", method = RequestMethod.GET, produces = MediaType.TEXT_PLAIN_VALUE)
-	@StatusCodes({ @ResponseCode(code = 200, condition = "All is well."),
-			@ResponseCode(code = 400, condition = "Missing query parameter 'name'") })
 	public ResponseEntity<String> sayHello(@RequestParam(value = "name", required = false) String name) {
 		if (name == null)
 			return ResponseEntity.badRequest().body("I need someone to say hi to. Use ?name= ...");
