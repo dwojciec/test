@@ -14,6 +14,7 @@ public class User {
   private String firstName;
   private String lastName;
   private String nickName;
+  private String email;
   private String iban;
   private String bic;
 }
